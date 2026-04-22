@@ -1,0 +1,176 @@
+{
+  "template_id": "template_c_showcase",
+  "workbook_name": "template_c_showcase.xlsx",
+  "summary_sheet": "Summary",
+  "detail_sheet": "Details",
+  "slots": {
+    "title_cell": "B2",
+    "product_cell": "C4",
+    "batch_cell": "C5",
+    "reason_cell": "C6",
+    "kpi_start_cell": "B9",
+    "narrative_summary_cell": "B16",
+    "narrative_risk_cell": "B22",
+    "actions_start_cell": "B27",
+    "detail_start_row": 2
+  },
+  "chart_layout": {
+    "sheet": "Summary",
+    "area_title_cell": "J2",
+    "area_title_text": "SPC 图表总览",
+    "layouts": {
+      "1": [
+        {
+          "title_cell": "J3",
+          "image_cell": "J4",
+          "width": 640,
+          "height": 360
+        }
+      ],
+      "2": [
+        {
+          "title_cell": "J3",
+          "image_cell": "J4",
+          "width": 640,
+          "height": 170
+        },
+        {
+          "title_cell": "J22",
+          "image_cell": "J23",
+          "width": 640,
+          "height": 170
+        }
+      ],
+      "3": [
+        {
+          "title_cell": "J3",
+          "image_cell": "J4",
+          "width": 440,
+          "height": 220
+        },
+        {
+          "title_cell": "P3",
+          "image_cell": "P4",
+          "width": 440,
+          "height": 220
+        },
+        {
+          "title_cell": "M15",
+          "image_cell": "M16",
+          "width": 620,
+          "height": 220
+        }
+      ],
+      "4": [
+        {
+          "title_cell": "J3",
+          "image_cell": "J4",
+          "width": 440,
+          "height": 220
+        },
+        {
+          "title_cell": "N3",
+          "image_cell": "N4",
+          "width": 440,
+          "height": 220
+        },
+        {
+          "title_cell": "J15",
+          "image_cell": "J16",
+          "width": 440,
+          "height": 220
+        },
+        {
+          "title_cell": "N15",
+          "image_cell": "N16",
+          "width": 440,
+          "height": 220
+        }
+      ]
+    }
+  },
+  "formal_layout": {
+    "column_widths": {
+      "B": 16,
+      "C": 18,
+      "D": 14,
+      "E": 2.5,
+      "J": 18,
+      "K": 18,
+      "L": 18,
+      "M": 18,
+      "N": 18,
+      "O": 18,
+      "P": 18,
+      "Q": 18
+    },
+    "title_band": {
+      "range": "B2:E2"
+    },
+    "metadata_rows": [
+      {
+        "label_cell": "B4",
+        "value_cell": "C4",
+        "label": "产品"
+      },
+      {
+        "label_cell": "B5",
+        "value_cell": "C5",
+        "label": "批次"
+      },
+      {
+        "label_cell": "B6",
+        "value_cell": "C6",
+        "label": "选型依据"
+      }
+    ],
+    "sections": {
+      "kpi": {
+        "header_cell": "B8",
+        "header_text": "关键指标",
+        "body_range": "B9:C13",
+        "kind": "kpi"
+      },
+      "summary": {
+        "header_cell": "B15",
+        "header_text": "分析结论",
+        "body_range": "B16:E19",
+        "kind": "text"
+      },
+      "risk": {
+        "header_cell": "B21",
+        "header_text": "质量风险",
+        "body_range": "B22:E24",
+        "kind": "text"
+      },
+      "actions": {
+        "header_cell": "B26",
+        "header_text": "建议措施",
+        "body_range": "B27:E30",
+        "kind": "actions"
+      }
+    },
+    "chart_board": {
+      "title_cell": "J2",
+      "title_text": "SPC 图表总览",
+      "frames": {
+        "1": [
+          "J3:Q21"
+        ],
+        "2": [
+          "J3:Q20",
+          "J22:Q39"
+        ],
+        "3": [
+          "J3:M14",
+          "P3:Q14",
+          "M15:Q26"
+        ],
+        "4": [
+          "J3:M26",
+          "N3:Q26"
+        ]
+      }
+    }
+  }
+}
