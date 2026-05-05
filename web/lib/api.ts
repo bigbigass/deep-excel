@@ -35,6 +35,7 @@ export type JobTaskItem = {
   label: string;
   status: JobTaskStatus;
   error: string | null;
+  reasoning?: string | null;
 };
 
 export type JobPayload = {

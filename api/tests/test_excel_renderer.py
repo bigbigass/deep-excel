@@ -209,6 +209,11 @@ def _write_template_manifest(
         json.dumps(manifest, indent=2),
         encoding="utf-8",
     )
+    workbook = openpyxl.Workbook()
+    summary_sheet = workbook.active
+    summary_sheet.title = "Summary"
+    workbook.create_sheet("Details")
+    workbook.save(template_dir / "test_template.xlsx")
     return templates_root
 
 
@@ -322,21 +327,30 @@ def test_render_report_places_chart_images_on_summary_sheet(
         assert summary_sheet[title_cell].value == CHART_TITLES[chart_id]
 
 
-def test_render_report_falls_back_to_charts_sheet_without_layout(tmp_path: Path) -> None:
+def test_render_report_requires_chart_layout_for_chart_embedding(tmp_path: Path) -> None:
     templates_root = _write_template_manifest(tmp_path, include_chart_layout=False)
     chart_paths = _build_chart_paths(tmp_path / "charts-fallback", 4)
-    report_file = render_report(
-        report_spec=_build_report_spec("test_template", list(chart_paths.keys())),
-        chart_paths=chart_paths,
-        templates_root=templates_root,
-        output_path=tmp_path / "fallback-layout.xlsx",
-    )
+    with pytest.raises(ValueError, match="chart_layout"):
+        render_report(
+            report_spec=_build_report_spec("test_template", list(chart_paths.keys())),
+            chart_paths=chart_paths,
+            templates_root=templates_root,
+            output_path=tmp_path / "fallback-layout.xlsx",
+        )
 
-    workbook = openpyxl.load_workbook(report_file)
 
-    assert "Charts" in workbook.sheetnames
-    assert len(getattr(workbook["Summary"], "_images", [])) == 0
-    assert len(getattr(workbook["Charts"], "_images", [])) == len(chart_paths)
+def test_render_report_requires_existing_template_workbook(tmp_path: Path) -> None:
+    templates_root = _write_template_manifest(tmp_path, include_chart_layout=True)
+    workbook_path = templates_root / "test_template" / "test_template.xlsx"
+    workbook_path.unlink()
+
+    with pytest.raises(FileNotFoundError, match="test_template.xlsx"):
+        render_report(
+            report_spec=_build_report_spec("test_template", []),
+            chart_paths={},
+            templates_root=templates_root,
+            output_path=tmp_path / "missing-template.xlsx",
+        )
 
 
 

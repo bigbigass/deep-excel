@@ -4,14 +4,16 @@ from time import monotonic, sleep
 from fastapi.testclient import TestClient
 
 from api.app.main import app
+from api.app.services import jobs
+from api.tests._planner_test_doubles import FakeFieldMappingPlanner, FakeReportPlanner
 
 client = TestClient(app)
 
 CSV_BYTES = (
-    b"sample_id,batch_id,measured_at,value,lsl,usl\n"
-    b"A-001,B-01,2026-04-21 08:00:00,10.010,9.950,10.050\n"
-    b"A-002,B-01,2026-04-21 08:01:00,10.025,9.950,10.050\n"
-    b"A-003,B-01,2026-04-21 08:02:00,10.060,9.950,10.050\n"
+    b"sample_id,batch_id,measured_at,sequence_index,value,lsl,usl\n"
+    b"A-001,B-01,2026-04-21 08:00:00,1,10.010,9.950,10.050\n"
+    b"A-002,B-01,2026-04-21 08:01:00,2,10.025,9.950,10.050\n"
+    b"A-003,B-01,2026-04-21 08:02:00,3,10.060,9.950,10.050\n"
 )
 
 
@@ -30,7 +32,10 @@ def wait_for_job(job_id: str, expected_state: str, timeout: float = 30.0) -> dic
     raise AssertionError(f"job did not reach {expected_state}: {latest_payload}")
 
 
-def test_create_job_and_render_report() -> None:
+def test_create_job_and_render_report(monkeypatch) -> None:
+    monkeypatch.setattr(jobs, "build_field_mapping_planner", lambda: FakeFieldMappingPlanner())
+    monkeypatch.setattr(jobs, "build_report_planner", lambda: FakeReportPlanner())
+
     create_response = client.post(
         "/api/v1/jobs",
         files={"file": ("demo.csv", BytesIO(CSV_BYTES), "text/csv")},

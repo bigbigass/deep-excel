@@ -1,10 +1,17 @@
+"""源数据读取与标准化服务。
+
+这个模块解决两个核心问题：
+1. 用户上传的 CSV/XLSX 列名并不统一，不能直接拿来做分析。
+2. 后续分析、图表、报表模板都希望面对同一套固定字段。
+
+所以这里会把“长得不一样的源表”收敛成统一的标准表结构。
+"""
+
 from pathlib import Path
 
 import pandas as pd
 
 from api.app.schemas import DatasetProfile, FieldMapping
-
-CSV_ENCODINGS = ("utf-8-sig", "utf-8", "gb18030")
 
 CANONICAL_COLUMNS = [
     "sample_id",
@@ -21,12 +28,19 @@ CANONICAL_COLUMNS = [
     "operator_name",
     "device_name",
 ]
+# 这组列名就是系统内部约定的“标准数据协议”。
+# 后面的 analytics / charts / excel 都默认输入已经被整理成这套字段。
 
 
 def load_source_dataframe(file_path: Path) -> pd.DataFrame:
+    """按文件后缀读取原始数据，并做最基础的空文件校验。
+
+    这里只负责把文件读成 DataFrame，不在这里做业务字段判断，
+    这样读取和业务解释两件事可以分开。
+    """
     suffix = file_path.suffix.lower()
     if suffix == ".csv":
-        frame = _read_csv_with_fallback_encodings(file_path)
+        frame = pd.read_csv(file_path, encoding="utf-8-sig")
     elif suffix in {".xlsx", ".xlsm"}:
         frame = pd.read_excel(file_path)
     else:
@@ -38,24 +52,12 @@ def load_source_dataframe(file_path: Path) -> pd.DataFrame:
     return frame
 
 
-def _read_csv_with_fallback_encodings(file_path: Path) -> pd.DataFrame:
-    last_decode_error: UnicodeDecodeError | None = None
-
-    for encoding in CSV_ENCODINGS:
-        try:
-            return pd.read_csv(file_path, encoding=encoding)
-        except UnicodeDecodeError as exc:
-            last_decode_error = exc
-
-    if last_decode_error is not None:
-        raise ValueError(
-            "Unsupported CSV encoding. Please upload a UTF-8 or GB18030 encoded CSV file."
-        ) from last_decode_error
-
-    raise ValueError("Unable to read CSV source file")
-
-
 def infer_field_mapping(frame: pd.DataFrame) -> FieldMapping:
+    """基于常见列名约定推断字段映射，作为非 AI 场景下的兜底逻辑。
+
+    当前主流程优先走 AI 字段识别；这个函数更像是保守规则版本，
+    当未来需要降级方案或快速脚本处理时可以直接复用。
+    """
     lowered = {str(column).strip().lower(): column for column in frame.columns}
 
     measurement_column = (
@@ -90,7 +92,17 @@ def infer_field_mapping(frame: pd.DataFrame) -> FieldMapping:
 
 
 def normalize_measurements(frame: pd.DataFrame, mapping: FieldMapping) -> pd.DataFrame:
+    """将源数据整理为统一列集合，便于后续分析和报表渲染。
+
+    `mapping` 只描述“原表哪一列对应什么业务含义”，
+    而这个函数真正负责把原始列搬运、转型、补空列，输出内部标准结构。
+    """
     def normalize_spec_limit(column_name: str | None) -> pd.Series | None:
+        """把规格限列压平成整列常量，适配模板和统计逻辑。
+
+        很多源表会在第一行写一次 USL/LSL，后面留空。这里通过前后填充把它补齐，
+        再统一压成“整列常量”，后面算合格率和渲染明细时会更简单。
+        """
         if not column_name:
             return None
         normalized_limit = pd.to_numeric(frame[column_name], errors="coerce").ffill().bfill()
@@ -100,23 +112,25 @@ def normalize_measurements(frame: pd.DataFrame, mapping: FieldMapping) -> pd.Dat
         return normalized_limit
 
     normalized = pd.DataFrame(index=frame.index, columns=CANONICAL_COLUMNS)
+    # 先填“有来源可直接映射”的字段。
     normalized["sample_id"] = (
         frame[mapping.sample_id_column]
         if mapping.sample_id_column
-        else frame.index.astype(str)
+        else None
     )
     normalized["batch_id"] = (
-        frame[mapping.batch_column] if mapping.batch_column else "DEMO-BATCH"
+        frame[mapping.batch_column] if mapping.batch_column else None
     )
-    normalized["part_number"] = "6205"
-    normalized["inspection_item"] = "Outer Diameter"
+    normalized["part_number"] = None
+    normalized["inspection_item"] = None
+    # measurement_value 是后续所有统计的核心列，所以这里直接强转为 float。
     normalized["measurement_value"] = frame[mapping.measurement_column].astype(float)
     normalized["target_value"] = (
         frame[mapping.target_column].astype(float) if mapping.target_column else None
     )
     normalized["usl"] = normalize_spec_limit(mapping.usl_column)
     normalized["lsl"] = normalize_spec_limit(mapping.lsl_column)
-    normalized["unit"] = "mm"
+    normalized["unit"] = None
     normalized["measured_at"] = (
         pd.to_datetime(frame[mapping.timestamp_column])
         if mapping.timestamp_column
@@ -126,14 +140,22 @@ def normalize_measurements(frame: pd.DataFrame, mapping: FieldMapping) -> pd.Dat
     if mapping.sequence_column:
         normalized["sequence_index"] = frame[mapping.sequence_column].astype(int)
     else:
-        normalized["sequence_index"] = range(1, len(frame) + 1)
+        # 缺少显式序号时先留空，后续图表可根据业务需要自行补位。
+        normalized["sequence_index"] = None
 
-    normalized["operator_name"] = "demo-operator"
-    normalized["device_name"] = "demo-gauge"
+    # 这些字段在当前 demo 场景里没有稳定来源，但先保留在标准协议中，
+    # 这样以后扩展模板或分析时不需要重新设计内部表结构。
+    normalized["operator_name"] = None
+    normalized["device_name"] = None
     return normalized
 
 
 def build_dataset_profile(normalized: pd.DataFrame) -> DatasetProfile:
+    """提取模板选择和前端展示会用到的数据画像。
+
+    这是对标准表的“摘要判断”，不关心具体数值分布，只关心数据是否具备
+    规格限、时间、序号这些能力，用于上层做展示和分支选择。
+    """
     if normalized.empty:
         return DatasetProfile(
             row_count=0,

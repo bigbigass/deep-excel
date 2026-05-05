@@ -3,10 +3,10 @@ import type { JobTaskItem, JobTaskStatus } from "@/lib/api";
 export type { JobTaskItem };
 
 const STATUS_LABELS: Record<JobTaskStatus, string> = {
-  pending: "等待中",
-  running: "执行中",
-  completed: "已完成",
-  failed: "失败"
+  pending: "\u7b49\u5f85\u4e2d",
+  running: "\u6267\u884c\u4e2d",
+  completed: "\u5df2\u5b8c\u6210",
+  failed: "\u5931\u8d25"
 };
 
 const STATUS_TONES: Record<JobTaskStatus, string> = {
@@ -34,19 +34,19 @@ export function JobTaskList({
     <section className="surface-card task-board">
       <div className="task-board__header">
         <div className="task-board__summary">
-          <p className="section-heading__eyebrow">流程跟踪</p>
+          <p className="section-heading__eyebrow">{"\u6d41\u7a0b\u8ddf\u8e2a"}</p>
           <h2 className="section-heading__title">{title}</h2>
           <p className="section-heading__subtitle">{currentMessage}</p>
         </div>
         <div className="meta-cluster">
-          <span className="meta-chip">已用时 {elapsedSeconds} 秒</span>
+          <span className="meta-chip">{"\u5df2\u7528\u65f6 "}{elapsedSeconds}{" \u79d2"}</span>
           <span className="meta-chip">
-            已完成 {completedCount} / {tasks.length}
+            {"\u5df2\u5b8c\u6210 "}{completedCount} / {tasks.length}
           </span>
         </div>
       </div>
 
-      <div className="task-board__progress-label">整体完成度</div>
+      <div className="task-board__progress-label">{"\u6574\u4f53\u5b8c\u6210\u5ea6"}</div>
       <div className="progress-bar" aria-hidden="true">
         <div className="progress-bar__value" style={{ width: `${progressPercent}%` }} />
       </div>
@@ -58,7 +58,8 @@ export function JobTaskList({
               <span className="task-board__index">{index + 1}</span>
               <div>
                 <div className="task-board__label">{task.label}</div>
-                {task.error ? <div className="task-board__detail">{task.error}</div> : null}
+                {task.reasoning ? <div className="task-board__detail">{task.reasoning}</div> : null}
+                {!task.reasoning && task.error ? <div className="task-board__detail">{task.error}</div> : null}
               </div>
             </div>
             <span className={`task-board__status ${STATUS_TONES[task.status]}`}>{STATUS_LABELS[task.status]}</span>

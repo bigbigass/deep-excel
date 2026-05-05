@@ -8,10 +8,10 @@ type TraceStep = {
 };
 
 const STATUS_LABELS: Record<JobTaskStatus, string> = {
-  pending: "等待中",
-  running: "进行中",
-  completed: "已完成",
-  failed: "失败"
+  pending: "\u7b49\u5f85\u4e2d",
+  running: "\u8fdb\u884c\u4e2d",
+  completed: "\u5df2\u5b8c\u6210",
+  failed: "\u5931\u8d25"
 };
 
 const STATUS_TONES: Record<JobTaskStatus, string> = {
@@ -31,57 +31,59 @@ function getKpiValue(job: JobPayload | null, label: string): string | null {
 
 function buildSteps(job: JobPayload | null): TraceStep[] {
   const reportSpec = job?.report_spec;
+  const parseTask = job?.tasks.find((task) => task.id === "parse");
   const sampleCount = reportSpec?.dataset_summary.sample_count ?? 0;
   const anomalyCount = reportSpec?.anomalies.length ?? 0;
-  const cpk = getKpiValue(job, "Cpk") ?? "待计算";
+  const cpk = getKpiValue(job, "Cpk") ?? "\u5f85\u8ba1\u7b97";
   const passRate =
     reportSpec?.dataset_summary.overall_pass_rate === undefined
       ? null
       : `${(reportSpec.dataset_summary.overall_pass_rate * 100).toFixed(1)}%`;
-  const chartTitles = reportSpec?.chart_specs.map((item) => item.title).join("、") ?? "";
+  const chartTitles = reportSpec?.chart_specs.map((item) => item.title).join("\u3001") ?? "";
 
   return [
     {
       id: "parse",
-      title: "读取数据",
-      detail:
-        sampleCount > 0
-          ? `已读取 ${sampleCount} 条检测记录，完成关键字段识别与标准化。`
-          : "正在读取上传文件并识别测量值、规格限和批次字段。",
+      title: "\u8bfb\u53d6\u6570\u636e",
+      detail: parseTask?.reasoning
+        ? parseTask.reasoning
+        : sampleCount > 0
+          ? `\u5df2\u8bfb\u53d6 ${sampleCount} \u6761\u68c0\u6d4b\u8bb0\u5f55\uff0c\u5b8c\u6210\u5173\u952e\u5b57\u6bb5\u8bc6\u522b\u4e0e\u6807\u51c6\u5316\u3002`
+          : "\u6b63\u5728\u8bfb\u53d6\u4e0a\u4f20\u6587\u4ef6\u5e76\u8bc6\u522b\u6d4b\u91cf\u503c\u3001\u89c4\u683c\u9650\u548c\u6279\u6b21\u5b57\u6bb5\u3002",
       status: getTaskStatus(job, "parse")
     },
     {
       id: "analyze",
-      title: "识别异常",
+      title: "\u8bc6\u522b\u5f02\u5e38",
       detail:
         reportSpec && passRate
-          ? `当前合格率 ${passRate}，Cpk ${cpk}，识别到 ${anomalyCount} 个异常信号。`
-          : "正在计算波动、过程能力和异常点。",
+          ? `\u5f53\u524d\u5408\u683c\u7387 ${passRate}\uff0cCpk ${cpk}\uff0c\u8bc6\u522b\u5230 ${anomalyCount} \u4e2a\u5f02\u5e38\u4fe1\u53f7\u3002`
+          : "\u6b63\u5728\u8ba1\u7b97\u6ce2\u52a8\u3001\u8fc7\u7a0b\u80fd\u529b\u548c\u5f02\u5e38\u70b9\u3002",
       status: getTaskStatus(job, "analyze")
     },
     {
       id: "charts",
-      title: "整理证据",
+      title: "\u6574\u7406\u8bc1\u636e",
       detail:
         reportSpec && chartTitles
-          ? `已整理 ${reportSpec.chart_specs.length} 张图表证据：${chartTitles}。`
-          : "正在整理直方图、控制图和趋势图等图表证据。",
+          ? `\u5df2\u6574\u7406 ${reportSpec.chart_specs.length} \u5f20\u56fe\u8868\u8bc1\u636e\uff1a${chartTitles}\u3002`
+          : "\u6b63\u5728\u6574\u7406\u76f4\u65b9\u56fe\u3001\u63a7\u5236\u56fe\u548c\u8d8b\u52bf\u56fe\u7b49\u56fe\u8868\u8bc1\u636e\u3002",
       status: getTaskStatus(job, "charts")
     },
     {
       id: "ai",
-      title: "形成判断",
+      title: "\u5f62\u6210\u5224\u65ad",
       detail: reportSpec
-        ? `系统已选择 ${job?.template_id ?? reportSpec.template_decision.template_id}，原因：${reportSpec.template_decision.reason}`
-        : "正在形成面向客户展示的分析判断。",
+        ? `\u7cfb\u7edf\u5df2\u9009\u62e9 ${job?.template_id ?? reportSpec.template_decision.template_id}\uff0c\u539f\u56e0\uff1a${reportSpec.template_decision.reason}`
+        : "\u6b63\u5728\u5f62\u6210\u9762\u5411\u5ba2\u6237\u5c55\u793a\u7684\u5206\u6790\u5224\u65ad\u3002",
       status: getTaskStatus(job, "ai")
     },
     {
       id: "render",
-      title: "生成报告",
+      title: "\u751f\u6210\u62a5\u544a",
       detail: reportSpec
-        ? `已整理报告摘要：${reportSpec.ai_narrative.executive_summary}`
-        : "正在写入报告内容，准备生成 Excel 文件。",
+        ? `\u5df2\u6574\u7406\u62a5\u544a\u6458\u8981\uff1a${reportSpec.ai_narrative.executive_summary}`
+        : "\u6b63\u5728\u5199\u5165\u62a5\u544a\u5185\u5bb9\uff0c\u51c6\u5907\u751f\u6210 Excel \u6587\u4ef6\u3002",
       status: getTaskStatus(job, "render")
     }
   ];
@@ -93,32 +95,32 @@ export function ReasoningTraceCard({ job }: { job: JobPayload | null }) {
   const sampleCount = reportSpec?.dataset_summary.sample_count ?? 0;
   const passRate =
     reportSpec?.dataset_summary.overall_pass_rate === undefined
-      ? "待计算"
+      ? "\u5f85\u8ba1\u7b97"
       : `${(reportSpec.dataset_summary.overall_pass_rate * 100).toFixed(1)}%`;
-  const cpk = getKpiValue(job, "Cpk") ?? "待计算";
+  const cpk = getKpiValue(job, "Cpk") ?? "\u5f85\u8ba1\u7b97";
   const anomalyCount = reportSpec?.anomalies.length ?? 0;
-  const templateId = job?.template_id ?? reportSpec?.template_decision.template_id ?? "待决策";
+  const templateId = job?.template_id ?? reportSpec?.template_decision.template_id ?? "\u5f85\u51b3\u7b56";
 
   return (
     <section className="surface-card trace-card" data-testid="reasoning-trace-card">
       <div className="trace-card__header">
         <div>
-          <p className="section-heading__eyebrow">过程可见</p>
-          <h2 className="section-heading__title">AI 分析过程</h2>
-          <p className="section-heading__subtitle">展示客户可见的分析步骤与证据摘要，不展示模型原始隐藏推理。</p>
+          <p className="section-heading__eyebrow">{"\u8fc7\u7a0b\u53ef\u89c1"}</p>
+          <h2 className="section-heading__title">{"AI \u5206\u6790\u8fc7\u7a0b"}</h2>
+          <p className="section-heading__subtitle">{"\u5c55\u793a\u5ba2\u6237\u53ef\u89c1\u7684\u5206\u6790\u6b65\u9aa4\u4e0e\u8bc1\u636e\u6458\u8981\uff0c\u4e0d\u5c55\u793a\u6a21\u578b\u539f\u59cb\u9690\u85cf\u63a8\u7406\u3002"}</p>
         </div>
         <span className={`status-pill ${reportSpec ? "status-pill--success" : "status-pill--warning"}`}>
-          {reportSpec ? "分析依据已生成" : "正在整理分析依据"}
+          {reportSpec ? "\u5206\u6790\u4f9d\u636e\u5df2\u751f\u6210" : "\u6b63\u5728\u6574\u7406\u5206\u6790\u4f9d\u636e"}
         </span>
       </div>
 
       {reportSpec ? (
         <div className="trace-card__signals" data-testid="reasoning-signal-strip">
-          <span className="signal-chip">样本 {sampleCount}</span>
-          <span className="signal-chip">合格率 {passRate}</span>
-          <span className="signal-chip">Cpk {cpk}</span>
-          <span className="signal-chip">异常 {anomalyCount}</span>
-          <span className="signal-chip">模板 {templateId}</span>
+          <span className="signal-chip">{"\u6837\u672c "}{sampleCount}</span>
+          <span className="signal-chip">{"\u5408\u683c\u7387 "}{passRate}</span>
+          <span className="signal-chip">{"Cpk "}{cpk}</span>
+          <span className="signal-chip">{"\u5f02\u5e38 "}{anomalyCount}</span>
+          <span className="signal-chip">{"\u6a21\u677f "}{templateId}</span>
         </div>
       ) : null}
 
@@ -140,13 +142,13 @@ export function ReasoningTraceCard({ job }: { job: JobPayload | null }) {
       {reportSpec ? (
         <div className="trace-card__insights">
           <div className="surface-card" data-testid="reasoning-risk-panel">
-            <p className="section-heading__eyebrow">风险提示</p>
-            <h3 className="section-heading__title">当前风险</h3>
+            <p className="section-heading__eyebrow">{"\u98ce\u9669\u63d0\u793a"}</p>
+            <h3 className="section-heading__title">{"\u5f53\u524d\u98ce\u9669"}</h3>
             <p className="section-heading__subtitle">{reportSpec.ai_narrative.quality_risk}</p>
           </div>
           <div className="surface-card" data-testid="reasoning-actions-panel">
-            <p className="section-heading__eyebrow">建议动作</p>
-            <h3 className="section-heading__title">下一步建议</h3>
+            <p className="section-heading__eyebrow">{"\u5efa\u8bae\u52a8\u4f5c"}</p>
+            <h3 className="section-heading__title">{"\u4e0b\u4e00\u6b65\u5efa\u8bae"}</h3>
             <ul className="bullet-list">
               {reportSpec.ai_narrative.recommended_actions.map((action) => (
                 <li key={action}>{action}</li>

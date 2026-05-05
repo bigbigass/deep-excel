@@ -1,3 +1,5 @@
+"""上游模型服务连通性检查。"""
+
 from __future__ import annotations
 
 from time import perf_counter
@@ -10,6 +12,8 @@ from api.app.config import get_settings, resolve_openai_base_url
 
 
 class UpstreamCheckResult(BaseModel):
+    """前端展示上游健康状态时使用的结构化结果。"""
+
     configured: bool
     reachable: bool
     model: str
@@ -20,6 +24,7 @@ class UpstreamCheckResult(BaseModel):
 
 
 def _extract_response_preview(content: Any) -> str | None:
+    """从模型响应中提取可展示的短文本预览。"""
     if isinstance(content, str):
         return content.strip() or None
     if isinstance(content, list):
@@ -35,6 +40,7 @@ def _extract_response_preview(content: Any) -> str | None:
 
 
 def run_upstream_connectivity_check() -> UpstreamCheckResult:
+    """调用一次上游模型，验证密钥、地址和响应延迟是否正常。"""
     settings = get_settings()
     resolved_base_url = resolve_openai_base_url(settings.openai_base_url)
     if not settings.openai_api_key:
@@ -51,6 +57,7 @@ def run_upstream_connectivity_check() -> UpstreamCheckResult:
     model = build_agent_model(timeout=15, max_retries=0)
     start = perf_counter()
     try:
+        # 使用最小探测提示词，既能验证联通性，也能控制成本和时延。
         response = model.invoke([("user", "Reply with PONG only.")])
         latency_ms = int((perf_counter() - start) * 1000)
         return UpstreamCheckResult(

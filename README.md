@@ -4,6 +4,8 @@
 
 ## Back end
 
+后端代码阅读地图见 [`api/README.md`](api/README.md)。如果只关心后端，先读那份文档，再回来看这里的启动命令。
+
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install --upgrade pip

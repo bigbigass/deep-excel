@@ -1,6 +1,15 @@
+"""AI 报表规划器工厂。
+
+这里负责把“确定性统计结果”交给大模型，换回“适合报表展示的结构化内容”。
+
+这个模块的边界很重要：
+- 不在这里重新计算统计量；
+- 不让模型随意输出任意结构；
+- 最终仍然要把模型结果收敛成 `ReportSpec` 这种受控对象。
+"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 
 from deepagents import create_deep_agent
@@ -14,13 +23,8 @@ from api.app.report_models import ChartSpec, KpiCard, NarrativeBlock, ReportMeta
 from api.app.services.report_localization import (
     DEFAULT_PRODUCT_NAME,
     DEFAULT_REPORT_TITLE,
-    DEFAULT_TEMPLATE_REASON,
-    build_executive_summary,
-    build_quality_risk,
-    build_recommended_actions,
     chart_title,
-    choose_chinese_list,
-    choose_chinese_text,
+    has_cjk_text,
     report_metric_label,
 )
 
@@ -29,6 +33,7 @@ ALLOWED_TEMPLATE_IDS = {
     "template_b_detailed",
     "template_c_showcase",
 }
+# 模型只能在这几个模板里选，避免输出仓库里不存在的模板编号。
 
 
 def _build_report_spec(
@@ -41,6 +46,11 @@ def _build_report_spec(
     quality_risk: str,
     recommended_actions: list[str],
 ) -> ReportSpec:
+    """把模型输出和统计结果装配成统一的报表规格。
+
+    这里相当于 AI 层和渲染层之间的适配器：
+    上游给的是分析结果和模型回答，下游要的是固定字段完整的 `ReportSpec`。
+    """
     return ReportSpec(
         report_meta=ReportMeta(
             title=DEFAULT_REPORT_TITLE,
@@ -77,27 +87,12 @@ def _build_report_spec(
     )
 
 
-def _default_template_id(analysis: dict[str, object]) -> str:
-    return choose_template.invoke(
-        {
-            "has_failures": bool(analysis["out_of_spec_count"]),
-            "cpk": analysis["cpk"],
-        }
-    )
-
-
-def _normalize_template_id(template_id: str, analysis: dict[str, object]) -> str:
-    default_template_id = _default_template_id(analysis)
-    if bool(analysis["out_of_spec_count"]):
-        return default_template_id
-
-    candidate = template_id.strip()
-    if candidate in ALLOWED_TEMPLATE_IDS:
-        return candidate
-    return default_template_id
-
-
 def _build_agent_user_prompt(*, job_id: str, analysis: dict[str, object]) -> str:
+    """把统计结果压缩成单条提示词，降低模型理解成本。
+
+    这里故意只给“摘要统计”，不直接塞原始明细表，
+    目的是把模型职责限制在“组织报表内容”而不是“重新做分析”。
+    """
     cpk_value = "n/a" if analysis["cpk"] is None else f"{float(analysis['cpk']):.4f}"
     return (
         f"Plan the SPC report for job {job_id}. "
@@ -113,6 +108,11 @@ def _build_agent_user_prompt(*, job_id: str, analysis: dict[str, object]) -> str
 
 
 def _build_agent_payload(*, job_id: str, analysis: dict[str, object]) -> dict[str, object]:
+    """构造 Deep Agent 调用载荷。
+
+    当前只发一条 user message，因为统计上下文已经被压缩得足够小，
+    不需要额外的多轮对话历史。
+    """
     return {
         "messages": [
             {
@@ -127,29 +127,11 @@ def _build_agent_payload(*, job_id: str, analysis: dict[str, object]) -> dict[st
     }
 
 
-def _build_plain_json_messages(*, job_id: str, analysis: dict[str, object]) -> list[dict[str, str]]:
-    return [
-        {
-            "role": "system",
-            "content": (
-                "You are planning an SPC quality report. "
-                "Return only one JSON object and no markdown. "
-                "Use Chinese for template_reason, executive_summary, quality_risk, and recommended_actions. "
-                "template_id must be one of template_a_overview, template_b_detailed, template_c_showcase."
-            ),
-        },
-        {
-            "role": "user",
-            "content": (
-                _build_agent_user_prompt(job_id=job_id, analysis=analysis)
-                + ' JSON schema: {"template_id": str, "template_reason": str, '
-                + '"executive_summary": str, "quality_risk": str, "recommended_actions": [str, str, ...]}.'
-            ),
-        },
-    ]
-
-
 def _coerce_message_text(content: object) -> str:
+    """兼容字符串和分块消息两种返回格式。
+
+    这是为了兼容不同模型/SDK 可能返回的 content 结构差异。
+    """
     if isinstance(content, str):
         return content
 
@@ -169,6 +151,10 @@ def _coerce_message_text(content: object) -> str:
 
 
 def _extract_json_object(raw_text: str) -> str:
+    """从模型原始文本中提取 JSON 主体，兼容代码块包裹。
+
+    当前主流程依赖 `response_format`，这个函数更多是保留给测试或回退场景。
+    """
     candidate = raw_text.strip()
 
     if candidate.startswith("```"):
@@ -190,29 +176,58 @@ def _extract_json_object(raw_text: str) -> str:
     return candidate
 
 
-@dataclass
-class RuleBasedReportPlanner:
-    def plan(self, *, job_id: str, analysis: dict[str, object]) -> ReportSpec:
-        template_id = _default_template_id(analysis)
-        summary = summarize_quality.invoke(
-            {
-                "mean_value": float(analysis["mean"]),
-                "cpk": analysis["cpk"],
-                "out_of_spec_count": int(analysis["out_of_spec_count"]),
-            }
-        )
-        return _build_report_spec(
-            job_id=job_id,
-            analysis=analysis,
-            template_id=template_id,
-            template_reason=DEFAULT_TEMPLATE_REASON,
-            executive_summary=summary,
-            quality_risk=build_quality_risk(analysis),
-            recommended_actions=build_recommended_actions(analysis),
-        )
+def coerce_message_text(content: object) -> str:
+    return _coerce_message_text(content)
+
+
+def extract_json_object(raw_text: str) -> str:
+    return _extract_json_object(raw_text)
+
+
+def _require_allowed_template_id(template_id: str) -> str:
+    """限制模板编号只能来自预定义演示模板。
+
+    即使模型语义上回答正确，只要模板编号不在白名单里，也直接拒绝。
+    """
+    candidate = template_id.strip()
+    if candidate not in ALLOWED_TEMPLATE_IDS:
+        raise ValueError("template_id must be one of the allowed template ids")
+    return candidate
+
+
+def _require_chinese_text(value: str, field_name: str) -> str:
+    """校验模型输出的关键叙述字段为非空中文文本。
+
+    这里不是做语言学判断，只是做最基本的防线：
+    防止模型返回空串、英文、或明显不符合前端展示预期的内容。
+    """
+    candidate = value.strip()
+    if not candidate:
+        raise ValueError(f"{field_name} must not be empty")
+    if not has_cjk_text(candidate):
+        raise ValueError(f"{field_name} must contain Chinese text")
+    return candidate
+
+
+def _require_chinese_list(values: list[str], field_name: str) -> list[str]:
+    """校验动作建议列表具备最小数量且全部为中文。
+
+    目前前端和模板都默认至少展示两条动作建议，所以这里把约束前置到后端。
+    """
+    candidates = [value.strip() for value in values if value.strip()]
+    if len(candidates) < 2:
+        raise ValueError(f"{field_name} must contain at least two Chinese items")
+    if not all(has_cjk_text(value) for value in candidates):
+        raise ValueError(f"{field_name} must contain Chinese text")
+    return candidates
 
 
 class AgentPlanResponse(BaseModel):
+    """主代理结构化输出协议。
+
+    Deep Agent 先生成这个轻量结构，再由代码进一步校验并拼成完整报表对象。
+    """
+
     template_id: str
     template_reason: str
     executive_summary: str
@@ -220,9 +235,18 @@ class AgentPlanResponse(BaseModel):
     recommended_actions: list[str]
 
 
-class DeepAgentPlanner(RuleBasedReportPlanner):
+class DeepAgentPlanner:
+    """基于 Deep Agents 的报表规划器。
+
+    这个类只关心一件事：把统计分析结果转成受控的中文报表规划结果。
+    """
+
     def __init__(self) -> None:
+        settings = get_settings()
+        if not settings.openai_api_key:
+            raise ValueError("DEEPEXCEL_OPENAI_API_KEY is required for AI report planning")
         self.model = build_agent_model()
+        # 主代理负责总体编排，子代理分别辅助理解数据和撰写质量结论。
         self.agent = create_deep_agent(
             name="report-orchestrator",
             model=self.model,
@@ -235,38 +259,33 @@ class DeepAgentPlanner(RuleBasedReportPlanner):
             response_format=AgentPlanResponse,
         )
 
-    def _plan_from_plain_json_model(self, *, job_id: str, analysis: dict[str, object]) -> AgentPlanResponse:
-        response = self.model.invoke(_build_plain_json_messages(job_id=job_id, analysis=analysis))
-        raw_text = _coerce_message_text(getattr(response, "content", response))
-        json_text = _extract_json_object(raw_text)
-        return AgentPlanResponse.model_validate_json(json_text)
-
     def plan(self, *, job_id: str, analysis: dict[str, object]) -> ReportSpec:
-        fallback_summary = build_executive_summary(analysis)
-        fallback_risk = build_quality_risk(analysis)
-        fallback_actions = build_recommended_actions(analysis)
+        """调用 AI 规划器，并把结果收敛为可渲染的 `ReportSpec`。
 
-        try:
-            result = self.agent.invoke(_build_agent_payload(job_id=job_id, analysis=analysis))
-            structured = AgentPlanResponse.model_validate(result["structured_response"])
-        except Exception:
-            try:
-                structured = self._plan_from_plain_json_model(job_id=job_id, analysis=analysis)
-            except Exception:
-                return super().plan(job_id=job_id, analysis=analysis)
+        这里不会盲信模型输出，而是经过三层收口：
+        1. Pydantic 结构校验。
+        2. 模板编号和中文文本约束校验。
+        3. 用 `_build_report_spec()` 重组为内部标准对象。
+        """
+        result = self.agent.invoke(_build_agent_payload(job_id=job_id, analysis=analysis))
+        structured = AgentPlanResponse.model_validate(result["structured_response"])
 
         return _build_report_spec(
             job_id=job_id,
             analysis=analysis,
-            template_id=_default_template_id(analysis),
-            template_reason=choose_chinese_text(structured.template_reason, DEFAULT_TEMPLATE_REASON),
-            executive_summary=choose_chinese_text(structured.executive_summary, fallback_summary),
-            quality_risk=choose_chinese_text(structured.quality_risk, fallback_risk),
-            recommended_actions=choose_chinese_list(structured.recommended_actions, fallback_actions),
+            template_id=_require_allowed_template_id(structured.template_id),
+            template_reason=_require_chinese_text(structured.template_reason, "template_reason"),
+            executive_summary=_require_chinese_text(structured.executive_summary, "executive_summary"),
+            quality_risk=_require_chinese_text(structured.quality_risk, "quality_risk"),
+            recommended_actions=_require_chinese_list(structured.recommended_actions, "recommended_actions"),
         )
 
 
 def build_agent_model(**kwargs: object) -> ChatOpenAI:
+    """按项目统一配置构造 OpenAI 兼容聊天模型。
+
+    这样字段映射规划器和报表规划器可以共享一套模型配置来源。
+    """
     settings = get_settings()
     return ChatOpenAI(
         model=settings.model_name,
@@ -276,8 +295,12 @@ def build_agent_model(**kwargs: object) -> ChatOpenAI:
     )
 
 
-def build_report_planner() -> RuleBasedReportPlanner:
+def build_report_planner() -> DeepAgentPlanner:
+    """创建报表规划器实例，并提前校验关键配置。
+
+    这里不做懒失败，缺少密钥时直接报错，避免任务线程跑到一半才发现 AI 不可用。
+    """
     settings = get_settings()
     if not settings.openai_api_key:
-        return RuleBasedReportPlanner()
+        raise ValueError("DEEPEXCEL_OPENAI_API_KEY is required for AI report planning")
     return DeepAgentPlanner()

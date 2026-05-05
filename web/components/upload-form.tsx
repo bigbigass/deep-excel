@@ -2,6 +2,29 @@
 
 import { useState } from "react";
 
+const SAMPLE_FILES = [
+  {
+    label: "稳定过程",
+    fileName: "normal_batch.csv",
+    href: "/sample-data/normal_batch.csv"
+  },
+  {
+    label: "均值偏移",
+    fileName: "shifted_mean_batch.csv",
+    href: "/sample-data/shifted_mean_batch.csv"
+  },
+  {
+    label: "波动偏高",
+    fileName: "high_variation_batch.csv",
+    href: "/sample-data/high_variation_batch.csv"
+  },
+  {
+    label: "超出规格",
+    fileName: "out_of_spec_batch.csv",
+    href: "/sample-data/out_of_spec_batch.csv"
+  }
+];
+
 export function UploadForm({ onSubmit }: { onSubmit: (file: File, onProgress: (progress: number) => void) => Promise<void> }) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,6 +84,21 @@ export function UploadForm({ onSubmit }: { onSubmit: (file: File, onProgress: (p
           <p className="supporting-copy">建议包含测量值、规格上下限、批次或时间字段。</p>
         )}
       </div>
+
+      <section className="sample-downloads" aria-labelledby="sample-downloads-title">
+        <div>
+          <h3 id="sample-downloads-title">测试文件下载</h3>
+          <p>客户可以先下载任一样例，再上传到上方入口验证分析和导出流程。</p>
+        </div>
+        <div className="sample-downloads__grid">
+          {SAMPLE_FILES.map((sample) => (
+            <a className="sample-download" download href={sample.href} key={sample.fileName}>
+              <span>{sample.label}</span>
+              <strong>{sample.fileName}</strong>
+            </a>
+          ))}
+        </div>
+      </section>
 
       {isSubmitting ? (
         <div className="progress-panel" aria-live="polite">

@@ -1,3 +1,5 @@
+"""Excel 摘要页样式工具。"""
+
 from __future__ import annotations
 
 from collections.abc import Mapping
@@ -15,6 +17,7 @@ CHART_TITLE_FILL = PatternFill(fill_type="solid", fgColor="FFE2E8F0")
 
 
 def apply_formal_summary_style(summary_sheet: Worksheet, manifest: dict[str, object]) -> None:
+    """根据模板 manifest 为正式摘要页套用统一视觉样式。"""
     formal_layout = manifest.get("formal_layout")
     if not isinstance(formal_layout, Mapping):
         return
@@ -32,6 +35,7 @@ def apply_formal_summary_style(summary_sheet: Worksheet, manifest: dict[str, obj
 
 
 def _apply_column_widths(summary_sheet: Worksheet, column_widths: object) -> None:
+    """批量设置列宽。"""
     if not isinstance(column_widths, Mapping):
         return
 
@@ -40,6 +44,7 @@ def _apply_column_widths(summary_sheet: Worksheet, column_widths: object) -> Non
 
 
 def _style_title_band(summary_sheet: Worksheet, title_band: object) -> None:
+    """设置报表标题横幅。"""
     if not isinstance(title_band, Mapping) or "range" not in title_band:
         return
 
@@ -53,6 +58,7 @@ def _style_title_band(summary_sheet: Worksheet, title_band: object) -> None:
 
 
 def _style_metadata_rows(summary_sheet: Worksheet, metadata_rows: object) -> None:
+    """渲染标题下方的元数据标签和值。"""
     if not isinstance(metadata_rows, list):
         return
 
@@ -71,6 +77,7 @@ def _style_metadata_rows(summary_sheet: Worksheet, metadata_rows: object) -> Non
 
 
 def _style_section(summary_sheet: Worksheet, section: object) -> None:
+    """统一处理 KPI、文本区块等摘要页分区样式。"""
     if not isinstance(section, Mapping):
         return
 
@@ -107,6 +114,7 @@ def _style_section(summary_sheet: Worksheet, section: object) -> None:
 
 
 def _style_chart_board(summary_sheet: Worksheet, manifest: dict[str, object], chart_board: object) -> None:
+    """为图表总览区补标题和边框，和图片布局保持一致。"""
     if not isinstance(chart_board, Mapping):
         return
 
@@ -148,6 +156,7 @@ def _style_chart_board(summary_sheet: Worksheet, manifest: dict[str, object], ch
 
 
 def _apply_border_to_range(summary_sheet: Worksheet, cell_range: str) -> None:
+    """给连续区域补边框，方便在模板中形成图表卡片。"""
     min_col, min_row, max_col, max_row = range_boundaries(cell_range)
     for row_index in range(min_row, max_row + 1):
         for column_index in range(min_col, max_col + 1):

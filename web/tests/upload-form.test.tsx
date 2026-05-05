@@ -14,6 +14,25 @@ test("upload form renders the intake console copy and passes the selected file t
   expect(screen.getByText("上传后会直接进入分析过程页，向客户展示 AI 如何判断数据并生成报告。")).toBeInTheDocument();
   expect(screen.getByText("支持 CSV / XLSX 格式")).toBeInTheDocument();
   expect(screen.queryByText("直接开始")).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "稳定过程 normal_batch.csv" })).toHaveAttribute(
+    "href",
+    "/sample-data/normal_batch.csv"
+  );
+  expect(screen.getByRole("link", { name: "均值偏移 shifted_mean_batch.csv" })).toHaveAttribute(
+    "href",
+    "/sample-data/shifted_mean_batch.csv"
+  );
+  expect(screen.getByRole("link", { name: "波动偏高 high_variation_batch.csv" })).toHaveAttribute(
+    "href",
+    "/sample-data/high_variation_batch.csv"
+  );
+  expect(screen.getByRole("link", { name: "超出规格 out_of_spec_batch.csv" })).toHaveAttribute(
+    "href",
+    "/sample-data/out_of_spec_batch.csv"
+  );
+  for (const link of screen.getAllByRole("link", { name: /batch\.csv$/ })) {
+    expect(link).toHaveAttribute("download");
+  }
 
   await user.upload(screen.getByLabelText("检测数据文件"), file);
   await user.click(screen.getByRole("button", { name: "开始分析" }));

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  // 应用外壳只负责全局氛围层和顶部品牌区，具体页面内容通过 children 注入。
   return (
     <div className="app-shell">
       <div className="app-shell__glow app-shell__glow--left" aria-hidden="true" />
