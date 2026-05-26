@@ -4,5 +4,6 @@
 __pycache__/
 .pytest_cache/
 outputs/
+.worktrees/
 web/node_modules/
 web/.next/
