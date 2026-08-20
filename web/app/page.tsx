@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { UploadForm } from "@/components/upload-form";
@@ -26,14 +27,17 @@ export default function HomePage() {
   return (
     <div className="page page-reveal">
       <section className="page-header">
-        <p className="page-header__eyebrow">能力演示</p>
+        <p className="page-header__eyebrow">旧版能力演示</p>
         <div className="page-header__title-row">
           <div>
-            <h1 className="page-header__title">上传检测文件，直接查看 AI 质量分析</h1>
+            <h1 className="page-header__title">上传检测文件，生成 SPC Excel 报告</h1>
             <p className="page-header__subtitle">
-              这是一个用于客户演示的质量分析 Demo。上传数据后，系统会展示 AI 如何读取数据、识别异常、形成判断并生成报告。
+              这里保留原有报告 Demo，用于验证字段识别、SPC、图表和 Excel 渲染。真正的异常调查流程已迁移到“质量调查”。
             </p>
           </div>
+        </div>
+        <div className="page-header__actions">
+          <Link className="button-primary" href="/investigations/new">进入质量调查</Link>
         </div>
       </section>
 
@@ -41,10 +45,10 @@ export default function HomePage() {
         <div className="home-overview">
           <section className="hero-panel">
             <div>
-              <p className="hero-panel__eyebrow">演示主线</p>
+              <p className="hero-panel__eyebrow">报告演示主线</p>
               <h2 className="hero-panel__title">上传后直接进入分析过程页</h2>
               <p className="hero-panel__subtitle">
-                页面会连续展示任务进度、AI 分析步骤、关键指标和图表证据，让客户看见系统如何得出结论，而不是只看到最终报告。
+                页面会连续展示任务进度、AI 分析步骤、关键指标和图表证据，最终生成固定结构的 Excel 报告。
               </p>
             </div>
 
