@@ -36,6 +36,16 @@ ALLOWED_TEMPLATE_IDS = {
 # 模型只能在这几个模板里选，避免输出仓库里不存在的模板编号。
 
 
+def _format_optional_percentage(value: object) -> str:
+    """把可选比例转换成报表展示文本。
+
+    缺少规格限时，合格率没有业务定义，必须显示为 n/a，而不是误导性的 100%。
+    """
+    if value is None:
+        return "n/a"
+    return f"{float(value) * 100:.1f}%"
+
+
 def _build_report_spec(
     *,
     job_id: str,
@@ -70,7 +80,7 @@ def _build_report_spec(
         kpi_cards=[
             KpiCard(label=report_metric_label("mean"), value=f"{analysis['mean']:.3f}"),
             KpiCard(label=report_metric_label("std_dev"), value=f"{analysis['std_dev']:.3f}"),
-            KpiCard(label=report_metric_label("pass_rate"), value=f"{analysis['pass_rate'] * 100:.1f}%"),
+            KpiCard(label=report_metric_label("pass_rate"), value=_format_optional_percentage(analysis["pass_rate"])),
             KpiCard(label=report_metric_label("cpk"), value="n/a" if analysis["cpk"] is None else f"{analysis['cpk']:.2f}"),
         ],
         detail_rows=[],
@@ -93,12 +103,13 @@ def _build_agent_user_prompt(*, job_id: str, analysis: dict[str, object]) -> str
     这里故意只给“摘要统计”，不直接塞原始明细表，
     目的是把模型职责限制在“组织报表内容”而不是“重新做分析”。
     """
+    pass_rate_value = "n/a" if analysis["pass_rate"] is None else f"{float(analysis['pass_rate']):.4f}"
     cpk_value = "n/a" if analysis["cpk"] is None else f"{float(analysis['cpk']):.4f}"
     return (
         f"Plan the SPC report for job {job_id}. "
         f"Mean={float(analysis['mean']):.4f}, "
         f"StdDev={float(analysis['std_dev']):.4f}, "
-        f"PassRate={float(analysis['pass_rate']):.4f}, "
+        f"PassRate={pass_rate_value}, "
         f"Cpk={cpk_value}, "
         f"OutOfSpecCount={int(analysis['out_of_spec_count'])}, "
         f"RecommendedCharts={analysis['recommended_charts']}, "

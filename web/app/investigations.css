@@ -1,0 +1,521 @@
+.app-topbar {
+  justify-content: space-between;
+}
+
+.app-brand {
+  min-width: 0;
+}
+
+.investigation-page-header .page-header__title {
+  max-width: 26ch;
+  font-size: clamp(2rem, 3.6vw, 3.15rem);
+  line-height: 1.12;
+}
+
+.investigation-entry-layout {
+  grid-template-columns: minmax(0, 1.45fr) minmax(380px, 0.9fr);
+}
+
+.investigation-intro-panel {
+  min-height: 100%;
+}
+
+.investigation-principles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding-top: 4px;
+}
+
+.investigation-principles > div {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(82, 116, 150, 0.14);
+  background: rgba(246, 249, 252, 0.86);
+}
+
+.investigation-principles strong {
+  color: var(--title);
+}
+
+.investigation-principles span {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.investigation-create-panel {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(232, 241, 249, 0.9));
+}
+
+.investigation-form {
+  display: grid;
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.investigation-field,
+.hypothesis-decision-form__fields label {
+  display: grid;
+  gap: 9px;
+}
+
+.investigation-field__label,
+.hypothesis-decision-form__fields label > span {
+  color: var(--title);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.investigation-input {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid rgba(75, 104, 134, 0.24);
+  border-radius: 12px;
+  outline: none;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.94);
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.investigation-input:focus {
+  border-color: rgba(31, 79, 121, 0.62);
+  box-shadow: 0 0 0 4px rgba(57, 112, 158, 0.11);
+  background: #fff;
+}
+
+.investigation-input--textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.investigation-file-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  padding: 10px 14px;
+  overflow: hidden;
+  border: 1px dashed rgba(31, 79, 121, 0.38);
+  border-radius: 14px;
+  background: rgba(232, 241, 249, 0.74);
+  color: var(--text-soft);
+}
+
+.investigation-file-picker input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.investigation-file-picker span {
+  overflow-wrap: anywhere;
+}
+
+.investigation-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.investigation-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.info-tile__compact-value {
+  font-size: 1.15rem !important;
+  overflow-wrap: anywhere;
+}
+
+.investigation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.78fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.investigation-main,
+.investigation-side {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.investigation-side {
+  position: sticky;
+  top: 20px;
+}
+
+.investigation-section {
+  overflow: hidden;
+}
+
+.investigation-evidence-list,
+.investigation-hypothesis-list,
+.finding-list,
+.investigation-action-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.evidence-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+}
+
+.evidence-card__rail {
+  display: flex;
+  justify-content: center;
+  padding-top: 19px;
+  background: linear-gradient(180deg, rgba(31, 79, 121, 0.96), rgba(46, 112, 141, 0.88));
+  color: #fff;
+  font-weight: 800;
+}
+
+.evidence-card__rail span {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 10px;
+}
+
+.evidence-card__body {
+  min-width: 0;
+  padding: 18px;
+}
+
+.evidence-card__header,
+.hypothesis-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.evidence-card__identity,
+.evidence-reference-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.evidence-card__id,
+.hypothesis-card__id,
+.finding-row__id {
+  color: var(--brand);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.evidence-card__type {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.evidence-card__title,
+.hypothesis-card__title {
+  margin: 12px 0 0;
+  color: var(--title);
+  line-height: 1.4;
+}
+
+.evidence-card__title {
+  font-size: 1.08rem;
+}
+
+.evidence-card__statement {
+  margin: 10px 0 0;
+  color: var(--text-soft);
+  line-height: 1.72;
+}
+
+.evidence-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 14px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.investigation-empty-state {
+  margin-top: 20px;
+  box-shadow: none;
+}
+
+.finding-row {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(249, 251, 253, 0.9);
+}
+
+.finding-row__marker {
+  align-self: start;
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.finding-row p {
+  margin: 8px 0 12px;
+  color: var(--text-soft);
+  line-height: 1.65;
+}
+
+.hypothesis-card {
+  padding: 20px;
+  border: 1px solid rgba(170, 106, 17, 0.22);
+  border-radius: var(--radius-md);
+  background: linear-gradient(180deg, rgba(255, 252, 245, 0.96), rgba(255, 255, 255, 0.92));
+  box-shadow: var(--shadow-sm);
+}
+
+.hypothesis-card__title {
+  max-width: 62ch;
+  font-size: 1.08rem;
+}
+
+.hypothesis-card__evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.hypothesis-card__evidence > div,
+.hypothesis-card__actions,
+.human-decision-summary {
+  padding: 14px;
+  border: 1px solid rgba(91, 113, 138, 0.16);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.hypothesis-card__evidence strong,
+.hypothesis-card__actions strong,
+.human-decision-summary strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--title);
+  font-size: 0.86rem;
+}
+
+.hypothesis-card__actions {
+  margin-top: 14px;
+}
+
+.hypothesis-card__actions ol {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.hypothesis-card__actions li {
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.hypothesis-card__actions li span,
+.hypothesis-card__actions li small {
+  display: block;
+}
+
+.hypothesis-card__actions li small {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
+.hypothesis-decision-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(91, 113, 138, 0.16);
+}
+
+.hypothesis-decision-form__choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decision-choice {
+  min-height: 42px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  color: var(--text-soft);
+  background: rgba(255, 255, 255, 0.82);
+  font-weight: 700;
+}
+
+.decision-choice--selected {
+  border-color: rgba(31, 79, 121, 0.48);
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  box-shadow: inset 0 0 0 1px rgba(31, 79, 121, 0.08);
+}
+
+.hypothesis-decision-form__fields {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.6fr) minmax(0, 1.4fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.human-decision-summary {
+  margin-top: 16px;
+  border-color: rgba(24, 124, 99, 0.2);
+  background: var(--success-soft);
+}
+
+.human-decision-summary p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.65;
+}
+
+.human-decision-summary span {
+  display: block;
+  margin-top: 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.investigation-control-card,
+.investigation-plan-card,
+.investigation-action-card,
+.investigation-missing-card {
+  overflow: hidden;
+}
+
+.investigation-control-card__button {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.investigation-plan-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding-left: 21px;
+}
+
+.investigation-plan-list li {
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
+.investigation-plan-list strong,
+.investigation-plan-list span {
+  display: block;
+}
+
+.investigation-plan-list strong {
+  color: var(--title);
+  overflow-wrap: anywhere;
+}
+
+.investigation-plan-list span {
+  margin-top: 4px;
+}
+
+.investigation-action-list > div {
+  padding: 14px;
+  border: 1px solid rgba(178, 70, 70, 0.14);
+  border-radius: 13px;
+  background: rgba(253, 229, 229, 0.5);
+}
+
+.investigation-action-list strong {
+  color: var(--title);
+}
+
+.investigation-action-list p {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+@media (max-width: 1200px) {
+  .investigation-entry-layout,
+  .investigation-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .investigation-side {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .app-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-nav {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .investigation-summary-grid,
+  .investigation-principles,
+  .hypothesis-card__evidence,
+  .hypothesis-decision-form__fields,
+  .investigation-side {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-card {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .investigation-page-header .page-header__title {
+    font-size: 1.85rem;
+  }
+
+  .evidence-card__header,
+  .hypothesis-card__header {
+    flex-direction: column;
+  }
+
+  .hypothesis-decision-form__choice,
+  .finding-row {
+    grid-template-columns: 1fr;
+  }
+
+  .finding-row__marker {
+    width: fit-content;
+  }
+}

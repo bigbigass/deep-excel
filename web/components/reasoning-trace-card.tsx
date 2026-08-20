@@ -29,16 +29,17 @@ function getKpiValue(job: JobPayload | null, label: string): string | null {
   return job?.report_spec?.kpi_cards.find((item) => item.label.toLowerCase() === label.toLowerCase())?.value ?? null;
 }
 
+function formatPassRate(value: number | null | undefined): string | null {
+  return value == null ? null : `${(value * 100).toFixed(1)}%`;
+}
+
 function buildSteps(job: JobPayload | null): TraceStep[] {
   const reportSpec = job?.report_spec;
   const parseTask = job?.tasks.find((task) => task.id === "parse");
   const sampleCount = reportSpec?.dataset_summary.sample_count ?? 0;
   const anomalyCount = reportSpec?.anomalies.length ?? 0;
   const cpk = getKpiValue(job, "Cpk") ?? "\u5f85\u8ba1\u7b97";
-  const passRate =
-    reportSpec?.dataset_summary.overall_pass_rate === undefined
-      ? null
-      : `${(reportSpec.dataset_summary.overall_pass_rate * 100).toFixed(1)}%`;
+  const passRate = formatPassRate(reportSpec?.dataset_summary.overall_pass_rate);
   const chartTitles = reportSpec?.chart_specs.map((item) => item.title).join("\u3001") ?? "";
 
   return [
@@ -55,10 +56,11 @@ function buildSteps(job: JobPayload | null): TraceStep[] {
     {
       id: "analyze",
       title: "\u8bc6\u522b\u5f02\u5e38",
-      detail:
-        reportSpec && passRate
+      detail: reportSpec
+        ? passRate
           ? `\u5f53\u524d\u5408\u683c\u7387 ${passRate}\uff0cCpk ${cpk}\uff0c\u8bc6\u522b\u5230 ${anomalyCount} \u4e2a\u5f02\u5e38\u4fe1\u53f7\u3002`
-          : "\u6b63\u5728\u8ba1\u7b97\u6ce2\u52a8\u3001\u8fc7\u7a0b\u80fd\u529b\u548c\u5f02\u5e38\u70b9\u3002",
+          : `\u5f53\u524d\u6570\u636e\u7f3a\u5c11\u5b8c\u6574\u89c4\u683c\u9650\uff0c\u5408\u683c\u7387\u548c Cpk \u65e0\u6cd5\u8ba1\u7b97\uff0c\u5df2\u8bc6\u522b ${anomalyCount} \u4e2a\u8fc7\u7a0b\u5f02\u5e38\u4fe1\u53f7\u3002`
+        : "\u6b63\u5728\u8ba1\u7b97\u6ce2\u52a8\u3001\u8fc7\u7a0b\u80fd\u529b\u548c\u5f02\u5e38\u70b9\u3002",
       status: getTaskStatus(job, "analyze")
     },
     {
@@ -93,10 +95,7 @@ export function ReasoningTraceCard({ job }: { job: JobPayload | null }) {
   const reportSpec = job?.report_spec;
   const steps = buildSteps(job);
   const sampleCount = reportSpec?.dataset_summary.sample_count ?? 0;
-  const passRate =
-    reportSpec?.dataset_summary.overall_pass_rate === undefined
-      ? "\u5f85\u8ba1\u7b97"
-      : `${(reportSpec.dataset_summary.overall_pass_rate * 100).toFixed(1)}%`;
+  const passRate = formatPassRate(reportSpec?.dataset_summary.overall_pass_rate) ?? "N/A";
   const cpk = getKpiValue(job, "Cpk") ?? "\u5f85\u8ba1\u7b97";
   const anomalyCount = reportSpec?.anomalies.length ?? 0;
   const templateId = job?.template_id ?? reportSpec?.template_decision.template_id ?? "\u5f85\u51b3\u7b56";

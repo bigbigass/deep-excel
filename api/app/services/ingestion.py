@@ -140,8 +140,8 @@ def normalize_measurements(frame: pd.DataFrame, mapping: FieldMapping) -> pd.Dat
     if mapping.sequence_column:
         normalized["sequence_index"] = frame[mapping.sequence_column].astype(int)
     else:
-        # 缺少显式序号时先留空，后续图表可根据业务需要自行补位。
-        normalized["sequence_index"] = None
+        # 没有显式序号时，使用稳定的 1-based 行序，保证控制图和趋势图仍可生成。
+        normalized["sequence_index"] = range(1, len(frame) + 1)
 
     # 这些字段在当前 demo 场景里没有稳定来源，但先保留在标准协议中，
     # 这样以后扩展模板或分析时不需要重新设计内部表结构。

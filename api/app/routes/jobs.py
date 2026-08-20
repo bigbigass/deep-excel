@@ -8,26 +8,54 @@
 """
 
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from api.app.services.jobs import enqueue_job_analysis, enqueue_job_render, load_job
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
 
 
+def _safe_upload_name(file_name: str | None) -> str:
+    """只保留客户端文件名，避免上传路径逃逸到 outputs 之外。"""
+    candidate = Path(file_name or "upload").name
+    if not candidate or candidate in {".", ".."}:
+        return "upload"
+    return candidate
+
+
+def _resolve_report_path(report_file_name: str) -> Path:
+    """把下载参数解析为 reports 目录内真实存在的 xlsx 文件。"""
+    candidate = Path(report_file_name)
+    if (
+        not report_file_name
+        or "/" in report_file_name
+        or "\\" in report_file_name
+        or candidate.name != report_file_name
+        or candidate.suffix.lower() != ".xlsx"
+    ):
+        raise HTTPException(status_code=400, detail="Invalid report file name")
+
+    reports_dir = (Path("outputs") / "reports").resolve()
+    report_path = (reports_dir / candidate.name).resolve()
+    if report_path.parent != reports_dir:
+        raise HTTPException(status_code=400, detail="Invalid report file name")
+    if not report_path.is_file():
+        raise HTTPException(status_code=404, detail="Report file not found")
+    return report_path
+
+
 @router.post("/jobs")
 async def create_job(file: UploadFile = File(...)) -> JSONResponse:
     """接收原始数据文件并异步启动分析任务。
 
-    路由层先把上传流落成磁盘文件，再把文件路径交给 job 服务，
-    后台线程后续都围绕这个稳定路径工作。
+    每次上传写入独立目录，确保不同任务上传同名文件时不会互相覆盖。
     """
-    upload_dir = Path("outputs") / "uploads"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    upload_path = upload_dir / file.filename
+    upload_dir = Path("outputs") / "uploads" / uuid4().hex
+    upload_dir.mkdir(parents=True, exist_ok=False)
+    upload_path = upload_dir / _safe_upload_name(file.filename)
     upload_path.write_bytes(await file.read())
     return JSONResponse(status_code=202, content=enqueue_job_analysis(upload_path))
 
@@ -53,9 +81,5 @@ def render_job(job_id: str) -> JSONResponse:
 
 @router.get("/reports/{report_file_name}")
 def download_report(report_file_name: str) -> FileResponse:
-    """下载已生成的报表文件。
-
-    这里没有再包一层业务逻辑，直接把 outputs/reports 下的目标文件返回给客户端。
-    """
-    report_path = Path("outputs") / "reports" / report_file_name
-    return FileResponse(report_path)
+    """下载 reports 目录中已经生成且通过校验的 Excel 报表。"""
+    return FileResponse(_resolve_report_path(report_file_name))

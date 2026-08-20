@@ -8,6 +8,8 @@ from fastapi.staticfiles import StaticFiles
 
 from api.app.config import get_settings
 from api.app.routes.health import router as health_router
+from api.app.routes.investigation_ai import router as investigation_ai_router
+from api.app.routes.investigations import router as investigations_router
 from api.app.routes.jobs import router as jobs_router
 
 app = FastAPI(title="DeepExcel API", version="0.1.0")
@@ -30,6 +32,8 @@ def healthcheck() -> dict[str, str]:
 
 
 app.include_router(jobs_router)
+app.include_router(investigations_router)
+app.include_router(investigation_ai_router)
 app.include_router(health_router)
 # 输出目录由后端统一暴露，前端可以直接下载生成的报表和图表。
 Path("outputs").mkdir(parents=True, exist_ok=True)

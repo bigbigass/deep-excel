@@ -45,20 +45,20 @@ def compute_analysis(normalized: pd.DataFrame) -> dict[str, object]:
 
     usl = float(normalized["usl"].dropna().iloc[0]) if normalized["usl"].notna().any() else None
     lsl = float(normalized["lsl"].dropna().iloc[0]) if normalized["lsl"].notna().any() else None
+    has_spec_limits = usl is not None and lsl is not None
 
     out_of_spec_count = 0
-    if usl is not None and lsl is not None:
-        # 只有规格上下限都存在时，超规判断才有业务意义。
+    pass_rate: float | None = None
+    if has_spec_limits:
+        # 只有规格上下限都存在时，超规判断和合格率才有业务意义。
         out_of_spec_count = int(
             ((normalized["measurement_value"] > usl) | (normalized["measurement_value"] < lsl)).sum()
         )
-
-    # pass_rate 的定义是“在规格内的样本占比”，如果没有规格限则默认视为未发现超规。
-    pass_rate = 1.0 - (out_of_spec_count / len(values))
+        pass_rate = 1.0 - (out_of_spec_count / len(values))
 
     cp = None
     cpk = None
-    if usl is not None and lsl is not None and std_dev > 0:
+    if has_spec_limits and std_dev > 0:
         # Cp 衡量潜在过程能力，Cpk 进一步考虑均值偏移。
         cp = (usl - lsl) / (6 * std_dev)
         cpk = min(
@@ -94,7 +94,7 @@ def compute_analysis(normalized: pd.DataFrame) -> dict[str, object]:
         "trend_line",
     ]
     # 只有存在规格上下限时，规格对比图才有展示意义。
-    if usl is not None and lsl is not None:
+    if has_spec_limits:
         recommended_charts.append("spec_comparison")
 
     return {
@@ -102,6 +102,7 @@ def compute_analysis(normalized: pd.DataFrame) -> dict[str, object]:
         "std_dev": std_dev,
         "min_value": min_value,
         "max_value": max_value,
+        "has_spec_limits": has_spec_limits,
         "pass_rate": pass_rate,
         "cp": cp,
         "cpk": cpk,

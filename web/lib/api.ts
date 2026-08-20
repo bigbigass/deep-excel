@@ -54,7 +54,7 @@ export type JobPayload = {
     template_decision: TemplateDecision;
     dataset_summary: {
       sample_count?: number;
-      overall_pass_rate?: number;
+      overall_pass_rate?: number | null;
     };
     kpi_cards: KpiCard[];
     chart_specs: ChartSpec[];
