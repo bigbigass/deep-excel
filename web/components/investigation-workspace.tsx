@@ -9,6 +9,7 @@ import {
   decideInvestigationHypothesis,
   getInvestigation,
   getInvestigationAiResult,
+  getInvestigationExportUrl,
   runInvestigationAi,
   type EvidenceGroundedInvestigationResult,
   type HypothesisDecisionInput,
@@ -182,6 +183,12 @@ export function InvestigationWorkspace({ caseId }: { caseId: string }) {
   );
 
   const aiAvailable = caseData?.state === "ready" && !aiResult && caseData.hypotheses.length === 0;
+  const exportAvailable = Boolean(
+    caseData
+      && !isPollingState(caseData.state)
+      && caseData.state !== "failed"
+      && caseData.state !== "mapping_required"
+  );
   const evidenceCount = caseData?.evidence.length ?? 0;
   const hypothesisCount = caseData?.hypotheses.length ?? 0;
 
@@ -204,6 +211,11 @@ export function InvestigationWorkspace({ caseId }: { caseId: string }) {
           </div>
         </div>
         <div className="page-header__actions">
+          {exportAvailable ? (
+            <a className="button-primary" href={getInvestigationExportUrl(caseId)}>
+              下载调查报告
+            </a>
+          ) : null}
           <Link className="button-secondary" href="/investigations/new">新建调查</Link>
           <Link className="button-ghost" href="/">返回报告演示</Link>
         </div>
