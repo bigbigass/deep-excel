@@ -38,8 +38,9 @@ def compare_group_failure_rates(
 ) -> EvidenceItem:
     """找出不良率最高的分组，并用其余样本作为对照。
 
-    检验使用 2x2 Fisher 精确检验；风险比同时给出原始值和带 0.5 连续性
-    修正的有限值。所有写入证据的指标保持标准 JSON 可序列化。
+    检验使用 2x2 Fisher 精确检验。由于最高风险组是从多个候选组中选择的，
+    检测结论使用按候选组数做 Bonferroni 修正后的 p 值。所有写入证据的指标
+    保持标准 JSON 可序列化。
     """
     if not group_by:
         raise ValueError("group_by must contain at least one column")
@@ -137,13 +138,15 @@ def compare_group_failure_rates(
     odds_ratio_is_infinite = not isfinite(raw_odds_ratio)
     odds_ratio = None if odds_ratio_is_infinite else raw_odds_ratio
     p_value = float(fisher_result.pvalue)
+    comparison_count = len(eligible)
+    adjusted_p_value = min(1.0, p_value * comparison_count)
 
     difference_detected = (
         group_rate > rest_rate
         and rate_difference >= minimum_rate_difference
-        and p_value <= alpha
+        and adjusted_p_value <= alpha
     )
-    if difference_detected and p_value <= 0.01 and rate_difference >= 0.10:
+    if difference_detected and adjusted_p_value <= 0.01 and rate_difference >= 0.10:
         confidence = "high"
     elif difference_detected:
         confidence = "medium"
@@ -156,7 +159,7 @@ def compare_group_failure_rates(
             f"不良主要集中于 {group_label}：该组 {group_failures}/{group_count} 条不良"
             f"（{group_rate:.1%}），其余样本 {rest_failures}/{rest_count} 条不良"
             f"（{rest_rate:.1%}）；连续性修正风险比为 {corrected_risk_ratio:.3g}，"
-            f"Fisher 检验 p 值为 {p_value:.3g}。"
+            f"组选择修正后的 p 值为 {adjusted_p_value:.3g}。"
         )
     else:
         statement = (
@@ -186,6 +189,9 @@ def compare_group_failure_rates(
             "odds_ratio": odds_ratio,
             "odds_ratio_is_infinite": odds_ratio_is_infinite,
             "p_value": p_value,
+            "adjusted_p_value": adjusted_p_value,
+            "comparison_count": comparison_count,
+            "multiple_testing_correction": "Bonferroni over eligible groups",
             "alpha": alpha,
             "minimum_rate_difference": minimum_rate_difference,
             "group_summaries": summaries,
