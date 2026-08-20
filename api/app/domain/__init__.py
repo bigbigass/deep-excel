@@ -30,10 +30,22 @@ from api.app.domain.ai import (
     InvestigationToolDescription,
     ToolAvailability,
 )
+from api.app.domain.mapping import (
+    ColumnMapping,
+    ColumnRole,
+    MappingAssignment,
+    MappingGeneratedBy,
+    MappingOrigin,
+    MappingStatus,
+    SchemaMappingConfirmation,
+    SchemaMappingProposal,
+)
 
 __all__ = [
     "ActionStatus",
     "ActionType",
+    "ColumnMapping",
+    "ColumnRole",
     "ContainmentActionDraft",
     "EvidenceConfidence",
     "EvidenceGroundedInvestigationResult",
@@ -55,5 +67,11 @@ __all__ = [
     "InvestigationSynthesisDraft",
     "InvestigationToolCall",
     "InvestigationToolDescription",
+    "MappingAssignment",
+    "MappingGeneratedBy",
+    "MappingOrigin",
+    "MappingStatus",
+    "SchemaMappingConfirmation",
+    "SchemaMappingProposal",
     "ToolAvailability",
 ]
