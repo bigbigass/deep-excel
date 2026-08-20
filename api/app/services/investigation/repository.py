@@ -11,6 +11,7 @@ from uuid import uuid4
 from api.app.config import get_settings
 from api.app.domain import InvestigationCase
 from api.app.domain.ai import EvidenceGroundedInvestigationResult
+from api.app.domain.mapping import SchemaMappingProposal
 
 _CASE_ID_PATTERN = re.compile(r"^CASE-[A-Za-z0-9][A-Za-z0-9-]*$")
 _ALLOWED_UPLOAD_SUFFIXES = {".csv", ".xlsx", ".xlsm"}
@@ -40,6 +41,9 @@ class InvestigationRepository:
 
     def case_path(self, case_id: str) -> Path:
         return self.case_dir(case_id) / "case.json"
+
+    def mapping_path(self, case_id: str) -> Path:
+        return self.case_dir(case_id) / "schema-mapping.json"
 
     def ai_result_path(self, case_id: str) -> Path:
         return self.case_dir(case_id) / "ai-result.json"
@@ -80,6 +84,22 @@ class InvestigationRepository:
                 raise FileNotFoundError(f"investigation case not found: {case_id}")
             payload = target_path.read_text(encoding="utf-8")
         return InvestigationCase.model_validate_json(payload)
+
+    def save_mapping(self, case_id: str, proposal: SchemaMappingProposal) -> Path:
+        """原子保存待确认或已确认的字段语义映射。"""
+        return self._write_atomic(
+            self.mapping_path(case_id),
+            self._serialize(proposal.model_dump(mode="json")),
+            prefix="schema-mapping",
+        )
+
+    def load_mapping(self, case_id: str) -> SchemaMappingProposal:
+        target_path = self.mapping_path(case_id)
+        with _REPOSITORY_LOCK:
+            if not target_path.is_file():
+                raise FileNotFoundError(f"schema mapping not found: {case_id}")
+            payload = target_path.read_text(encoding="utf-8")
+        return SchemaMappingProposal.model_validate_json(payload)
 
     def save_ai_result(
         self,
