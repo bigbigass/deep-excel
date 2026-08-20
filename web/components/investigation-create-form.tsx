@@ -49,9 +49,12 @@ export function InvestigationCreateForm() {
       </div>
 
       <form className="investigation-form" onSubmit={handleSubmit}>
-        <label className="investigation-field">
-          <span className="investigation-field__label">调查问题</span>
+        <div className="investigation-field">
+          <label className="investigation-field__label" htmlFor="investigation-question">
+            调查问题
+          </label>
           <textarea
+            id="investigation-question"
             className="investigation-input investigation-input--textarea"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
@@ -60,12 +63,15 @@ export function InvestigationCreateForm() {
             placeholder="例如：为什么最近三天外径不良率升高？"
           />
           <span className="helper-text">问题会成为整个证据链和后续 AI 调查计划的边界。</span>
-        </label>
+        </div>
 
-        <label className="investigation-field">
-          <span className="investigation-field__label">质量数据文件</span>
+        <div className="investigation-field">
+          <label className="investigation-field__label" htmlFor="investigation-file">
+            质量数据文件
+          </label>
           <span className="investigation-file-picker">
             <input
+              id="investigation-file"
               type="file"
               accept=".csv,.xlsx,.xlsm"
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
@@ -77,7 +83,7 @@ export function InvestigationCreateForm() {
           <span className="helper-text">
             当前 MVP 建议包含 measurement_value、usl、lsl、measured_at，以及设备、型腔、班次、材料批次或刀具等上下文字段。
           </span>
-        </label>
+        </div>
 
         {error ? <div className="feedback-error" role="alert">{error}</div> : null}
 
