@@ -1,4 +1,4 @@
-"""质量调查案件创建、执行、AI 增强和人工决策服务。"""
+"""质量调查案件创建、执行、AI 增强、人工决策和固定导出服务。"""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from api.app.services.investigation.ai_pipeline import (
     run_evidence_grounded_ai,
 )
 from api.app.services.investigation.baseline import run_baseline_investigation
+from api.app.services.investigation.export import render_investigation_report
 from api.app.services.investigation.repository import InvestigationRepository
 from api.app.services.investigation.tool_registry import InvestigationToolRegistry
 
@@ -199,3 +200,22 @@ def decide_hypothesis(
     )
     repo.save(updated_case)
     return updated_case
+
+
+def export_investigation_report(
+    case_id: str,
+    *,
+    repository: InvestigationRepository | None = None,
+) -> Path:
+    """生成固定结构的 Excel 调查报告；AI 无法控制模板或单元格。"""
+    repo = repository or _DEFAULT_REPOSITORY
+    case = repo.load(case_id)
+    try:
+        ai_result = repo.load_ai_result(case_id)
+    except FileNotFoundError:
+        ai_result = None
+    return render_investigation_report(
+        case=case,
+        ai_result=ai_result,
+        output_path=repo.export_path(case_id),
+    )
