@@ -1,16 +1,25 @@
-"""质量调查案件创建、执行和状态读取服务。"""
+"""质量调查案件创建、执行、AI 增强和人工决策服务。"""
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Thread
+from typing import Literal
 from uuid import uuid4
 
-from api.app.domain import InvestigationCase
+from api.app.agent.evidence_synthesizer import EvidenceSynthesizer
+from api.app.agent.investigation_planner import InvestigationPlanner
+from api.app.domain import HypothesisDecision, InvestigationCase
+from api.app.domain.ai import EvidenceGroundedInvestigationResult
 from api.app.services.ingestion import load_source_dataframe
+from api.app.services.investigation.ai_pipeline import (
+    apply_ai_result_to_case,
+    run_evidence_grounded_ai,
+)
 from api.app.services.investigation.baseline import run_baseline_investigation
 from api.app.services.investigation.repository import InvestigationRepository
+from api.app.services.investigation.tool_registry import InvestigationToolRegistry
 
 _DEFAULT_REPOSITORY = InvestigationRepository()
 
@@ -111,3 +120,82 @@ def load_investigation(
 ) -> InvestigationCase:
     repo = repository or _DEFAULT_REPOSITORY
     return repo.load(case_id)
+
+
+def run_ai_investigation(
+    case_id: str,
+    *,
+    repository: InvestigationRepository | None = None,
+    planner: InvestigationPlanner | None = None,
+    synthesizer: EvidenceSynthesizer | None = None,
+    registry: InvestigationToolRegistry | None = None,
+) -> EvidenceGroundedInvestigationResult:
+    """基于已落盘源文件执行白名单工具规划与证据约束综合。"""
+    repo = repository or _DEFAULT_REPOSITORY
+    case = repo.load(case_id)
+    if not case.source_refs:
+        raise ValueError("investigation case has no source file reference")
+
+    source_path = repo.resolve_source_ref(case_id, case.source_refs[0])
+    frame = load_source_dataframe(source_path)
+    result = run_evidence_grounded_ai(
+        case,
+        frame,
+        planner=planner,
+        synthesizer=synthesizer,
+        registry=registry,
+    )
+    updated_case = apply_ai_result_to_case(case, result)
+    repo.save(updated_case)
+    repo.save_ai_result(case_id, result)
+    return result
+
+
+def load_ai_investigation_result(
+    case_id: str,
+    *,
+    repository: InvestigationRepository | None = None,
+) -> EvidenceGroundedInvestigationResult:
+    repo = repository or _DEFAULT_REPOSITORY
+    return repo.load_ai_result(case_id)
+
+
+def decide_hypothesis(
+    case_id: str,
+    hypothesis_id: str,
+    *,
+    outcome: Literal["confirmed", "rejected"],
+    actor_id: str,
+    note: str,
+    repository: InvestigationRepository | None = None,
+) -> InvestigationCase:
+    """仅接受人工确认或排除，并把决定写回候选假设。"""
+    repo = repository or _DEFAULT_REPOSITORY
+    case = repo.load(case_id)
+    target = next((item for item in case.hypotheses if item.id == hypothesis_id), None)
+    if target is None:
+        raise KeyError(f"hypothesis not found: {hypothesis_id}")
+    if target.status in {"confirmed", "rejected"}:
+        raise ValueError("hypothesis already has a final decision")
+
+    decision = HypothesisDecision(
+        outcome=outcome,
+        actor_type="human",
+        actor_id=actor_id,
+        note=note,
+    )
+    hypothesis_payload = target.model_dump()
+    hypothesis_payload.update({"status": outcome, "decision": decision})
+    updated_hypothesis = target.__class__.model_validate(hypothesis_payload)
+    hypotheses = [
+        updated_hypothesis if item.id == hypothesis_id else item
+        for item in case.hypotheses
+    ]
+    updated_case = _replace_case(
+        case,
+        state="waiting_for_user",
+        hypotheses=hypotheses,
+        updated_at=datetime.now(UTC),
+    )
+    repo.save(updated_case)
+    return updated_case
