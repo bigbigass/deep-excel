@@ -18,14 +18,18 @@ beforeEach(() => {
   jest.clearAllMocks();
 });
 
-test("home page renders a simplified Chinese demo flow and starts analysis after upload", async () => {
+test("home page keeps the report demo available and starts analysis after upload", async () => {
   const user = userEvent.setup();
   const file = new File(["demo"], "demo.csv", { type: "text/csv" });
   jest.mocked(createJob).mockResolvedValue({ job_id: "JOB-DEMO-1" });
 
   render(<HomePage />);
 
-  expect(screen.getByText("上传检测文件，直接查看 AI 质量分析")).toBeInTheDocument();
+  expect(screen.getByText("上传检测文件，生成 SPC Excel 报告")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "进入质量调查" })).toHaveAttribute(
+    "href",
+    "/investigations/new"
+  );
   expect(screen.getByText("上传数据")).toBeInTheDocument();
   expect(screen.getByText("AI 分析")).toBeInTheDocument();
   expect(screen.getByText("生成报告")).toBeInTheDocument();
