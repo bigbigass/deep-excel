@@ -14,6 +14,58 @@ export type HypothesisStatus = "candidate" | "under_verification" | "confirmed" 
 export type ActionType = "containment" | "verification" | "corrective";
 export type ActionStatus = "proposed" | "accepted" | "in_progress" | "completed" | "dismissed";
 
+export type ColumnRole =
+  | "sample_id"
+  | "batch_id"
+  | "measured_at"
+  | "sequence_index"
+  | "quality_feature"
+  | "measurement_value"
+  | "target"
+  | "usl"
+  | "lsl"
+  | "machine_id"
+  | "station_id"
+  | "cavity_id"
+  | "shift"
+  | "operator_id"
+  | "material_lot"
+  | "tool_id"
+  | "tool_cycles"
+  | "ignore";
+
+export type MappingOrigin = "canonical" | "rule" | "ai" | "human";
+export type MappingGeneratedBy = "canonical" | "deterministic" | "ai" | "hybrid" | "human";
+
+export type ColumnMapping = {
+  source_column: string;
+  role: ColumnRole;
+  confidence: number;
+  reasoning: string;
+  origin: MappingOrigin;
+};
+
+export type SchemaMappingProposal = {
+  file_name: string;
+  source_columns: string[];
+  mappings: ColumnMapping[];
+  status: "pending" | "confirmed";
+  generated_by: MappingGeneratedBy;
+  missing_required_roles: ColumnRole[];
+  warnings: string[];
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  revision: number;
+};
+
+export type SchemaMappingConfirmationInput = {
+  mappings: Array<{
+    source_column: string;
+    role: ColumnRole;
+  }>;
+  actor_id: string;
+};
+
 export type InvestigationScope = {
   quality_feature: string | null;
   start_at: string | null;
@@ -157,6 +209,25 @@ export async function createInvestigation(question: string, file: File): Promise
 export async function getInvestigation(caseId: string): Promise<InvestigationCase> {
   const response = await fetch(`${API_BASE_URL}/api/v1/investigations/${caseId}`, {
     cache: "no-store"
+  });
+  return parseApiResponse<InvestigationCase>(response);
+}
+
+export async function getInvestigationMapping(caseId: string): Promise<SchemaMappingProposal> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/investigations/${caseId}/mapping`, {
+    cache: "no-store"
+  });
+  return parseApiResponse<SchemaMappingProposal>(response);
+}
+
+export async function confirmInvestigationMapping(
+  caseId: string,
+  input: SchemaMappingConfirmationInput
+): Promise<InvestigationCase> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/investigations/${caseId}/mapping/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
   });
   return parseApiResponse<InvestigationCase>(response);
 }
