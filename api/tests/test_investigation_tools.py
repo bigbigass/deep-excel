@@ -1,9 +1,14 @@
+import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from api.app.services.investigation import detect_mean_change_point, profile_dataset
+from api.app.services.investigation import (
+    compare_group_failure_rates,
+    detect_mean_change_point,
+    profile_dataset,
+)
 
 
 DEMO_DATA_PATH = Path("sample_data/investigation_demo.csv")
@@ -90,3 +95,48 @@ def test_detect_mean_change_point_requires_enough_rows() -> None:
 
     with pytest.raises(ValueError, match="valid rows are required"):
         detect_mean_change_point(frame, min_segment_size=2)
+
+
+def test_compare_group_failure_rates_localizes_problem_machine_and_cavity() -> None:
+    evidence = compare_group_failure_rates(
+        _load_demo_data(),
+        group_by=["machine_id", "cavity_id"],
+        source_refs=[str(DEMO_DATA_PATH)],
+    )
+
+    assert evidence.id == "E-GROUP-DIFFERENCE"
+    assert evidence.evidence_type == "group_difference"
+    assert evidence.confidence == "high"
+    assert evidence.metrics["difference_detected"] is True
+    assert evidence.metrics["selected_group"] == {"machine_id": "M02", "cavity_id": 4}
+    assert evidence.metrics["group_sample_count"] == 12
+    assert evidence.metrics["group_failure_count"] == 8
+    assert evidence.metrics["group_failure_rate"] > 0.60
+    assert evidence.metrics["rest_failure_count"] == 0
+    assert evidence.metrics["raw_risk_ratio"] is None
+    assert evidence.metrics["raw_risk_ratio_is_infinite"] is True
+    assert evidence.metrics["corrected_risk_ratio"] > 100
+    assert evidence.metrics["p_value"] < 0.01
+    assert evidence.filters == {"machine_id": "M02", "cavity_id": 4}
+
+    # 证据必须能够写入严格 JSON，不能泄漏 Infinity 或 pandas 标量。
+    json.dumps(evidence.model_dump(mode="json"), allow_nan=False)
+
+
+def test_compare_group_failure_rates_does_not_blame_balanced_material_lots() -> None:
+    evidence = compare_group_failure_rates(
+        _load_demo_data(),
+        group_by=["material_lot"],
+        minimum_rate_difference=0.01,
+    )
+
+    assert evidence.metrics["difference_detected"] is False
+    assert evidence.confidence == "low"
+    assert abs(evidence.metrics["rate_difference"]) < 0.001
+
+
+def test_compare_group_failure_rates_requires_specifications() -> None:
+    frame = _load_demo_data().drop(columns=["usl"])
+
+    with pytest.raises(ValueError, match="missing required columns"):
+        compare_group_failure_rates(frame, group_by=["machine_id"])
