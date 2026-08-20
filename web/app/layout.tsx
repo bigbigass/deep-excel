@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./investigations.css";
 
 import { AppShell } from "@/components/app-shell";
 import { StaleChunkReload } from "@/components/stale-chunk-reload";
