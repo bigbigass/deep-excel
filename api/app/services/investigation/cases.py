@@ -34,12 +34,18 @@ def create_investigation(
     start_background: bool = True,
 ) -> dict[str, str]:
     """创建初始案件、保存源文件，并按需启动后台基线调查。"""
+    normalized_question = question.strip()
+    if not normalized_question:
+        raise ValueError("question must not be empty")
+    if not content:
+        raise ValueError("investigation upload must not be empty")
+
     repo = repository or _DEFAULT_REPOSITORY
     case_id = create_case_id()
     upload_path = repo.save_upload(case_id, file_name, content)
     initial_case = InvestigationCase(
         case_id=case_id,
-        question=question,
+        question=normalized_question,
         state="created",
         source_refs=[str(upload_path)],
     )
