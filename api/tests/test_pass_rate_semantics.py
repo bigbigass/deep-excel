@@ -27,7 +27,7 @@ def test_report_spec_preserves_unavailable_pass_rate() -> None:
     )
 
     assert report.dataset_summary["overall_pass_rate"] is None
-    pass_rate_card = next(card for card in report.kpi_cards if card.label == "PassRate")
+    pass_rate_card = next(card for card in report.kpi_cards if card.label == "合格率")
     assert pass_rate_card.value == "n/a"
 
 
