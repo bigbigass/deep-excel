@@ -190,3 +190,7 @@ export async function decideInvestigationHypothesis(
   );
   return parseApiResponse<InvestigationCase>(response);
 }
+
+export function getInvestigationExportUrl(caseId: string): string {
+  return `${API_BASE_URL}/api/v1/investigations/${encodeURIComponent(caseId)}/export`;
+}
