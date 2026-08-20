@@ -44,6 +44,14 @@ class InvestigationRepository:
     def ai_result_path(self, case_id: str) -> Path:
         return self.case_dir(case_id) / "ai-result.json"
 
+    def export_path(self, case_id: str) -> Path:
+        """返回当前案件固定调查报告的受控路径。"""
+        validated = self.validate_case_id(case_id)
+        export_dir = (self.case_dir(validated) / "exports").resolve()
+        if export_dir.parent != self.case_dir(validated):
+            raise ValueError("invalid investigation export directory")
+        return export_dir / f"{validated}-investigation.xlsx"
+
     @staticmethod
     def _serialize(payload: object) -> str:
         return json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
