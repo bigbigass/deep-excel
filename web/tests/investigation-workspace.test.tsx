@@ -14,6 +14,9 @@ import {
 jest.mock("@/lib/investigations", () => ({
   getInvestigation: jest.fn(),
   getInvestigationAiResult: jest.fn(),
+  getInvestigationExportUrl: jest.fn(
+    (caseId: string) => `http://127.0.0.1:8000/api/v1/investigations/${caseId}/export`
+  ),
   runInvestigationAi: jest.fn(),
   decideInvestigationHypothesis: jest.fn()
 }));
@@ -144,12 +147,16 @@ describe("InvestigationWorkspace", () => {
     });
   });
 
-  test("shows deterministic evidence, runs AI, and records a human decision", async () => {
+  test("shows deterministic evidence, exports, runs AI, and records a human decision", async () => {
     const user = userEvent.setup();
     render(<InvestigationWorkspace caseId="CASE-1234" />);
 
     expect(await screen.findByTestId("evidence-E-GROUP-MACHINE-ID-CAVITY-ID")).toHaveTextContent(
       "machine_id=M02"
+    );
+    expect(screen.getByRole("link", { name: "下载调查报告" })).toHaveAttribute(
+      "href",
+      "http://127.0.0.1:8000/api/v1/investigations/CASE-1234/export"
     );
 
     await user.click(screen.getByRole("button", { name: "运行证据约束 AI" }));
@@ -162,7 +169,7 @@ describe("InvestigationWorkspace", () => {
 
     await user.click(screen.getByRole("button", { name: "确认根因" }));
     await user.type(screen.getByLabelText("操作者"), "quality-engineer-01");
-    await user.type(screen.getByLabelText("验证说明"), "现场检查并完成复测后确认。" );
+    await user.type(screen.getByLabelText("验证说明"), "现场检查并完成复测后确认。");
     await user.click(screen.getByRole("button", { name: "保存人工决定" }));
 
     await waitFor(() => {
