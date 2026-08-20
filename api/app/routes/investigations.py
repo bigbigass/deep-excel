@@ -8,14 +8,20 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from api.app.domain import InvestigationCase
+from api.app.domain import (
+    InvestigationCase,
+    SchemaMappingConfirmation,
+    SchemaMappingProposal,
+)
 from api.app.domain.ai import EvidenceGroundedInvestigationResult
 from api.app.services.investigation.cases import (
+    confirm_investigation_mapping,
     create_investigation,
     decide_hypothesis,
     export_investigation_report,
     load_ai_investigation_result,
     load_investigation,
+    load_investigation_mapping,
     run_ai_investigation,
 )
 
@@ -44,7 +50,7 @@ async def create_investigation_case(
     question: str = Form(...),
     file: UploadFile = File(...),
 ) -> JSONResponse:
-    """上传标准化质量数据并启动确定性基线调查。"""
+    """上传质量数据并启动字段识别和确定性基线调查。"""
     try:
         payload = create_investigation(
             question=question,
@@ -65,6 +71,37 @@ def get_investigation_case(case_id: str) -> InvestigationCase:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Investigation case not found") from exc
+
+
+@router.get(
+    "/investigations/{case_id}/mapping",
+    response_model=SchemaMappingProposal,
+)
+def get_investigation_mapping(case_id: str) -> SchemaMappingProposal:
+    """读取规则/AI 产生的字段语义建议，供用户确认或修订。"""
+    try:
+        return load_investigation_mapping(case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Schema mapping not found") from exc
+
+
+@router.post(
+    "/investigations/{case_id}/mapping/confirm",
+    response_model=InvestigationCase,
+)
+def confirm_investigation_case_mapping(
+    case_id: str,
+    request: SchemaMappingConfirmation,
+) -> InvestigationCase:
+    """保存人工字段确认，并用确认后的标准数据运行确定性调查。"""
+    try:
+        return confirm_investigation_mapping(case_id, request)
+    except ValueError as exc:
+        raise HTTPException(status_code=_value_error_status(exc), detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post(
