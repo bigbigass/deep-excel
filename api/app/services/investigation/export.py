@@ -92,10 +92,10 @@ def _prepare_sheet(sheet: Worksheet, *, landscape: bool = True) -> None:
     sheet.page_setup.fitToWidth = 1
     sheet.page_setup.fitToHeight = 0
     sheet.sheet_properties.pageSetUpPr.fitToPage = True
-    sheet.sheet_margins.left = 0.25
-    sheet.sheet_margins.right = 0.25
-    sheet.sheet_margins.top = 0.4
-    sheet.sheet_margins.bottom = 0.4
+    sheet.page_margins.left = 0.25
+    sheet.page_margins.right = 0.25
+    sheet.page_margins.top = 0.4
+    sheet.page_margins.bottom = 0.4
 
 
 def _write_title(sheet: Worksheet, title: str, *, column_count: int) -> None:
