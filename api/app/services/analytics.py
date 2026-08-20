@@ -34,7 +34,8 @@ def _build_individual_control_limits(values: list[float], series_mean: float) ->
 def compute_analysis(normalized: pd.DataFrame) -> dict[str, object]:
     """从标准化测量数据中计算报表所需的统计指标和异常摘要。
 
-    返回的是一个面向上层消费的通用分析字典，里面既有原始统计量，n    也有前端和报表可以直接使用的异常摘要和推荐图表列表。
+    返回的是一个面向上层消费的通用分析字典，里面既有原始统计量，
+    也有前端和报表可以直接使用的异常摘要和推荐图表列表。
     """
     values = normalized["measurement_value"].astype(float).tolist()
     series_mean = mean(values)
