@@ -34,6 +34,15 @@ def _resolve_quality_feature(frame: pd.DataFrame) -> str | None:
     return values[0] if len(values) == 1 else None
 
 
+def _resolve_time_range(frame: pd.DataFrame) -> tuple[object | None, object | None]:
+    if "measured_at" not in frame.columns:
+        return None, None
+    timestamps = pd.to_datetime(frame["measured_at"], errors="coerce").dropna()
+    if timestamps.empty:
+        return None, None
+    return timestamps.min().to_pydatetime(), timestamps.max().to_pydatetime()
+
+
 def _group_evidence_id(group_by: list[str]) -> str:
     suffix = "-".join(column.replace("_", "-").upper() for column in group_by)
     return f"E-GROUP-{suffix}"
@@ -134,12 +143,18 @@ def run_baseline_investigation(
     else:
         missing_data.append("缺少测量值或规格限，无法进行不良率分层和因素关联排名")
 
-    scope = InvestigationScope(quality_feature=_resolve_quality_feature(frame))
+    start_at, end_at = _resolve_time_range(frame)
+    scope = InvestigationScope(
+        quality_feature=_resolve_quality_feature(frame),
+        start_at=start_at,
+        end_at=end_at,
+    )
     return InvestigationCase(
         case_id=resolved_case_id,
         question=normalized_question,
         scope=scope,
         state="ready",
+        source_refs=resolved_source_refs,
         evidence=evidence,
         hypotheses=[],
         actions=[],
