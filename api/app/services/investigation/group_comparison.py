@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from math import inf
+from math import isfinite
 
 import numpy as np
 import pandas as pd
@@ -39,7 +39,7 @@ def compare_group_failure_rates(
     """找出不良率最高的分组，并用其余样本作为对照。
 
     检验使用 2x2 Fisher 精确检验；风险比同时给出原始值和带 0.5 连续性
-    修正的有限值，避免对照组零不良时只得到无法排序的无穷大。
+    修正的有限值。所有写入证据的指标保持标准 JSON 可序列化。
     """
     if not group_by:
         raise ValueError("group_by must contain at least one column")
@@ -55,7 +55,7 @@ def compare_group_failure_rates(
     if missing_columns:
         raise ValueError(f"missing required columns: {missing_columns}")
 
-    working = frame[list(required_columns)].copy()
+    working = frame[sorted(required_columns)].copy()
     working[value_column] = pd.to_numeric(working[value_column], errors="coerce")
     working[lsl_column] = pd.to_numeric(working[lsl_column], errors="coerce")
     working[usl_column] = pd.to_numeric(working[usl_column], errors="coerce")
@@ -116,8 +116,11 @@ def compare_group_failure_rates(
     group_rate = group_failures / group_count
     rest_rate = rest_failures / rest_count
     rate_difference = group_rate - rest_rate
-    if rest_rate == 0:
-        raw_risk_ratio = inf if group_rate > 0 else 1.0
+    raw_risk_ratio_is_infinite = rest_rate == 0 and group_rate > 0
+    if raw_risk_ratio_is_infinite:
+        raw_risk_ratio: float | None = None
+    elif rest_rate == 0:
+        raw_risk_ratio = 1.0
     else:
         raw_risk_ratio = group_rate / rest_rate
 
@@ -129,9 +132,11 @@ def compare_group_failure_rates(
         [group_failures, group_count - group_failures],
         [rest_failures, rest_count - rest_failures],
     ]
-    odds_ratio, p_value = fisher_exact(contingency_table, alternative="greater")
-    odds_ratio = float(odds_ratio)
-    p_value = float(p_value)
+    fisher_result = fisher_exact(contingency_table, alternative="greater")
+    raw_odds_ratio = float(fisher_result.statistic)
+    odds_ratio_is_infinite = not isfinite(raw_odds_ratio)
+    odds_ratio = None if odds_ratio_is_infinite else raw_odds_ratio
+    p_value = float(fisher_result.pvalue)
 
     difference_detected = (
         group_rate > rest_rate
@@ -176,8 +181,10 @@ def compare_group_failure_rates(
             "rest_failure_rate": rest_rate,
             "rate_difference": rate_difference,
             "raw_risk_ratio": raw_risk_ratio,
+            "raw_risk_ratio_is_infinite": raw_risk_ratio_is_infinite,
             "corrected_risk_ratio": corrected_risk_ratio,
             "odds_ratio": odds_ratio,
+            "odds_ratio_is_infinite": odds_ratio_is_infinite,
             "p_value": p_value,
             "alpha": alpha,
             "minimum_rate_difference": minimum_rate_difference,
