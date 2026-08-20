@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from api.app.domain import InvestigationCase
@@ -13,12 +13,15 @@ from api.app.domain.ai import EvidenceGroundedInvestigationResult
 from api.app.services.investigation.cases import (
     create_investigation,
     decide_hypothesis,
+    export_investigation_report,
     load_ai_investigation_result,
     load_investigation,
     run_ai_investigation,
 )
 
 router = APIRouter(prefix="/api/v1", tags=["investigations"])
+
+_XLSX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 class HypothesisDecisionRequest(BaseModel):
@@ -116,3 +119,19 @@ def decide_investigation_hypothesis(
         raise HTTPException(status_code=_value_error_status(exc), detail=str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Investigation case not found") from exc
+
+
+@router.get("/investigations/{case_id}/export")
+def download_investigation_report(case_id: str) -> FileResponse:
+    """生成并下载固定结构的 Excel 调查报告。"""
+    try:
+        report_path = export_investigation_report(case_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="Investigation case not found") from exc
+    return FileResponse(
+        report_path,
+        media_type=_XLSX_MEDIA_TYPE,
+        filename=f"{case_id}-investigation.xlsx",
+    )
