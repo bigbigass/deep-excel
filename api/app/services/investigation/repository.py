@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from api.app.config import get_settings
 from api.app.domain import InvestigationCase
+from api.app.domain.ai import EvidenceGroundedInvestigationResult
 
 _CASE_ID_PATTERN = re.compile(r"^CASE-[A-Za-z0-9][A-Za-z0-9-]*$")
 _ALLOWED_UPLOAD_SUFFIXES = {".csv", ".xlsx", ".xlsm"}
@@ -40,22 +41,29 @@ class InvestigationRepository:
     def case_path(self, case_id: str) -> Path:
         return self.case_dir(case_id) / "case.json"
 
-    def save(self, case: InvestigationCase) -> Path:
-        """使用同目录临时文件和原子替换，避免读到半写入 JSON。"""
-        case_directory = self.case_dir(case.case_id)
-        case_directory.mkdir(parents=True, exist_ok=True)
-        target_path = case_directory / "case.json"
-        temporary_path = case_directory / f".case-{uuid4().hex}.tmp"
-        payload = json.dumps(
-            case.model_dump(mode="json"),
-            ensure_ascii=False,
-            indent=2,
-            allow_nan=False,
-        )
+    def ai_result_path(self, case_id: str) -> Path:
+        return self.case_dir(case_id) / "ai-result.json"
+
+    @staticmethod
+    def _serialize(payload: object) -> str:
+        return json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False)
+
+    @staticmethod
+    def _write_atomic(target_path: Path, payload: str, *, prefix: str) -> Path:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = target_path.parent / f".{prefix}-{uuid4().hex}.tmp"
         with _REPOSITORY_LOCK:
             temporary_path.write_text(payload, encoding="utf-8")
             temporary_path.replace(target_path)
         return target_path
+
+    def save(self, case: InvestigationCase) -> Path:
+        """使用同目录临时文件和原子替换，避免读到半写入 JSON。"""
+        return self._write_atomic(
+            self.case_path(case.case_id),
+            self._serialize(case.model_dump(mode="json")),
+            prefix="case",
+        )
 
     def load(self, case_id: str) -> InvestigationCase:
         target_path = self.case_path(case_id)
@@ -64,6 +72,26 @@ class InvestigationRepository:
                 raise FileNotFoundError(f"investigation case not found: {case_id}")
             payload = target_path.read_text(encoding="utf-8")
         return InvestigationCase.model_validate_json(payload)
+
+    def save_ai_result(
+        self,
+        case_id: str,
+        result: EvidenceGroundedInvestigationResult,
+    ) -> Path:
+        """保存 AI 计划、追加证据、发现和候选假设，供后续复核。"""
+        return self._write_atomic(
+            self.ai_result_path(case_id),
+            self._serialize(result.model_dump(mode="json")),
+            prefix="ai-result",
+        )
+
+    def load_ai_result(self, case_id: str) -> EvidenceGroundedInvestigationResult:
+        target_path = self.ai_result_path(case_id)
+        with _REPOSITORY_LOCK:
+            if not target_path.is_file():
+                raise FileNotFoundError(f"AI investigation result not found: {case_id}")
+            payload = target_path.read_text(encoding="utf-8")
+        return EvidenceGroundedInvestigationResult.model_validate_json(payload)
 
     def save_upload(self, case_id: str, file_name: str | None, content: bytes) -> Path:
         """把上传文件隔离到案件目录，并拒绝路径穿越和不支持的后缀。"""
@@ -81,3 +109,15 @@ class InvestigationRepository:
             raise ValueError("invalid upload file path")
         target_path.write_bytes(content)
         return target_path
+
+    def resolve_source_ref(self, case_id: str, source_ref: str) -> Path:
+        """只允许 AI 调查重新打开当前案件 uploads 目录内的源文件。"""
+        upload_dir = (self.case_dir(case_id) / "uploads").resolve()
+        candidate = Path(source_ref).resolve()
+        if candidate.parent != upload_dir:
+            raise ValueError("investigation source reference is outside the case upload directory")
+        if not candidate.is_file():
+            raise FileNotFoundError(f"investigation source file not found: {candidate.name}")
+        if candidate.suffix.lower() not in _ALLOWED_UPLOAD_SUFFIXES:
+            raise ValueError("investigation source file type is not allowed")
+        return candidate
