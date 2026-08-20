@@ -41,12 +41,14 @@ def test_load_source_dataframe_reads_csv(tmp_path: Path) -> None:
     assert raw_frame.loc[0, "sample_id"] == "A-001"
     assert raw_frame.loc[2, "value"] == 10.06
 
+
 def test_load_source_dataframe_rejects_non_utf8_csv(tmp_path: Path) -> None:
     source_path = tmp_path / "gb18030_measurements.csv"
     source_path.write_bytes(GB18030_CSV_BYTES)
 
     with pytest.raises(UnicodeDecodeError):
         load_source_dataframe(source_path)
+
 
 def test_load_source_dataframe_rejects_unsupported_file_type(tmp_path: Path) -> None:
     source_path = tmp_path / "simple_measurements.txt"
@@ -103,7 +105,7 @@ def test_normalize_measurements_maps_measurement_and_batch_fields(tmp_path: Path
     assert normalized.loc[2, "batch_id"] == "B-01"
 
 
-def test_normalize_measurements_leaves_optional_fields_empty_when_missing() -> None:
+def test_normalize_measurements_fills_sequence_from_row_order_when_missing() -> None:
     raw_frame = pd.DataFrame(
         {
             "value": [10.01, 10.02, 10.03],
@@ -120,7 +122,7 @@ def test_normalize_measurements_leaves_optional_fields_empty_when_missing() -> N
     assert normalized["measurement_value"].tolist() == [10.01, 10.02, 10.03]
     assert normalized["unit"].isna().all()
     assert normalized["measured_at"].isna().all()
-    assert normalized["sequence_index"].isna().all()
+    assert normalized["sequence_index"].tolist() == [1, 2, 3]
     assert normalized["operator_name"].isna().all()
     assert normalized["device_name"].isna().all()
 
