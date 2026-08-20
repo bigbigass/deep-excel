@@ -8,6 +8,7 @@ from api.app.services.investigation import (
     compare_group_failure_rates,
     detect_mean_change_point,
     profile_dataset,
+    rank_failure_associations,
 )
 
 
@@ -140,3 +141,53 @@ def test_compare_group_failure_rates_requires_specifications() -> None:
 
     with pytest.raises(ValueError, match="missing required columns"):
         compare_group_failure_rates(frame, group_by=["machine_id"])
+
+
+def test_rank_failure_associations_prioritizes_tool_and_cavity_signals() -> None:
+    evidence = rank_failure_associations(
+        _load_demo_data(),
+        candidate_columns=[
+            "machine_id",
+            "cavity_id",
+            "shift",
+            "material_lot",
+            "tool_id",
+            "tool_cycles",
+        ],
+        source_refs=[str(DEMO_DATA_PATH)],
+    )
+
+    assert evidence.id == "E-FACTOR-RANKING"
+    assert evidence.evidence_type == "factor_association"
+    assert evidence.confidence == "high"
+    assert evidence.metrics["association_detected"] is True
+    ranked = {
+        item["factor"]: item
+        for item in evidence.metrics["ranked_factors"]
+    }
+    assert evidence.metrics["ranked_factors"][0]["factor"] in {"tool_cycles", "tool_id"}
+    assert ranked["tool_cycles"]["factor_type"] == "numeric"
+    assert ranked["tool_cycles"]["association_detected"] is True
+    assert ranked["tool_cycles"]["effect_size"] > 0.70
+    assert ranked["tool_cycles"]["adjusted_p_value"] < 0.01
+    assert ranked["tool_id"]["association_detected"] is True
+    assert ranked["cavity_id"]["association_detected"] is True
+    assert ranked["material_lot"]["association_detected"] is False
+    assert ranked["material_lot"]["effect_size"] < 0.01
+    assert "不能直接认定为根因" in evidence.statement
+
+    json.dumps(evidence.model_dump(mode="json"), allow_nan=False)
+
+
+def test_rank_failure_associations_returns_negative_evidence_without_failures() -> None:
+    frame = _load_demo_data().copy()
+    frame["measurement_value"] = 20.0
+
+    evidence = rank_failure_associations(
+        frame,
+        candidate_columns=["machine_id", "cavity_id"],
+    )
+
+    assert evidence.metrics["association_detected"] is False
+    assert evidence.metrics["ranked_factors"] == []
+    assert evidence.confidence == "low"
